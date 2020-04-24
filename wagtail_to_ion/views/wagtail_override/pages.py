@@ -277,7 +277,7 @@ def ion_edit(request, page_id):
     errors_debug = None
 
     readonly_group = False
-    if request.user.groups.filter(name__in=settings.READ_ONLY_GROUPS).exists():
+    if request.user.groups.filter(name__in=settings.ION_READ_ONLY_GROUPS).exists():
         readonly_group = True
 
     if request.method == 'POST' and not readonly_group:

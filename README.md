@@ -107,6 +107,10 @@ Sane defaults would be something like this:
 Defaults to `wagtail_to_ion.Collection`, but can be overridden to allow for collections to hold
 additional metadata. If you want to use your own collection class, see details below.
 
+### `ION_READ_ONLY_GROUPS`
+
+Set CMS user groups that may not publish or edit pages but go into the CMS, defaults to empty list
+
 ## 4. Available hooks
 
 ### Collection model
