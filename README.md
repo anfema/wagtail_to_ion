@@ -27,12 +27,12 @@ Content:
   ]
 ```
 2. Add `ION_VIDEO_RENDITIONS` (see below) to `settings.py`
-4. Add overridden URLs into your `urls.py`
+3. Add overridden URLs into your `urls.py`
 ```python
     url(r'^cms/', include('wagtail_to_ion.urls.wagtail_override_urls')), # overridden urls by the api adapter
     url(r'^cms/', include(wagtailadmin_urls)),                           # default wagtail admin urls
 ```
-5. Add new API URLs
+4. Add new API URLs
 ```python
     url(r'^', include('wagtail_to_ion.urls.api_urls')),
 ```
