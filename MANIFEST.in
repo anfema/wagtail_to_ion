@@ -2,5 +2,7 @@ include pyproject.toml
 include README.md
 include LICENSE.md
 
+recursive-include wagtail_to_ion/templates *
+recursive-include wagtail_to_ion/static *
 
 global-exclude *.py[cod]

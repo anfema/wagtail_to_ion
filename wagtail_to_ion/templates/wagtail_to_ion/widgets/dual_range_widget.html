@@ -1,0 +1,84 @@
+<input type="range" multiple name="{{ widget.name }}" min="{{ widget.rangemin }}" max="{{ widget.rangemax }}" {% if widget.minvalue != None %} value="{{ widget.minvalue|stringformat:'s' }},{{ widget.maxvalue|stringformat:'s' }}"{% endif %}{% include "django/forms/widgets/attrs.html" %}>
+<input type="hidden" name="{{ widget.name }}_low" value="{% if widget.minvalue != None %}{{ widget.minvalue|stringformat:'s' }}{% endif %}">
+<input type="hidden" name="{{ widget.name }}_high" value="{% if widget.maxvalue != None %}{{ widget.maxvalue|stringformat:'s' }}{% endif %}">
+
+<span id="{{ widget.name }}-mindisplay">
+    {% if widget.minvalue != None %}
+        {% if widget.minvalue == widget.rangemin %}
+            &infin;
+        {% else %}
+            {{ widget.minvalue }}
+        {% endif %}
+    {% else %}
+        &infin;
+    {% endif %}
+</span>
+to
+<span id="{{ widget.name }}-maxdisplay">
+    {% if widget.maxvalue != None %}
+        {% if widget.maxvalue == widget.rangemax %}
+            &infin;
+        {% else %}
+            {{ widget.maxvalue }}
+        {% endif %}
+    {% else %}
+        &infin;
+    {% endif %}
+</span>
+{% if widget.unit %}{{ widget.unit }}{% endif %}
+
+<input type="button" id="{{ widget.name }}-reset" value="Reset Filter" style="display: inline-block; width: 150px">
+<script>
+    const {{ widget.name }}_reset = document.getElementById('{{ widget.name }}-reset');
+
+    function {{ widget.name }}_onchange(e) {
+        const obj = document.getElementsByName('{{ widget.name }}')[0];
+        const mindisplay = document.getElementById('{{ widget.name }}-mindisplay');
+        const maxdisplay = document.getElementById('{{ widget.name }}-maxdisplay');
+
+        const minval = document.getElementsByName('{{ widget.name }}_low')[0];
+        const maxval = document.getElementsByName('{{ widget.name }}_high')[0];
+
+        if (obj.valueLow < {{ widget.rangemin }} + 1) {
+            mindisplay.innerHTML = '&infin;';
+            minval.value = '';
+        } else {
+            mindisplay.innerText = obj.valueLow;
+            minval.value = obj.valueLow;
+        }
+
+        if (obj.valueHigh > {{ widget.rangemax }} - 1) {
+            maxdisplay.innerHTML = '&infin;';
+            maxval.value = '';
+        } else {
+            maxdisplay.innerText = obj.valueHigh;
+            maxval.value = obj.valueHigh;
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        window.setTimeout(() => {
+            const {{ widget.name }}_widgets = document.getElementsByName('{{ widget.name }}');
+
+            {{ widget.name }}_widgets.forEach(item => {
+                item.addEventListener('change', {{ widget.name }}_onchange);
+            });
+
+            {{ widget.name }}_reset.onclick = function(e) {
+                const obj = document.getElementsByName('{{ widget.name }}')[0];
+
+                {% if widget.reset_mode == 'inf' %}
+                    obj.valueLow = {{ widget.rangemin }};
+                    obj.valueHigh = {{ widget.rangemax }};
+                {% endif %}
+                {% if widget.reset_mode == 'zero' %}
+                    obj.valueLow = 0;
+                    obj.valueHigh = 0;
+                {% endif %}
+                const event = new Event('change');
+                obj.dispatchEvent(event);
+                e.preventDefault();
+            }
+        }, 200);
+    });
+</script>
