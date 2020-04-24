@@ -1,0 +1,6 @@
+.idea/
+*.pyc
+.vscode/*
+**/.mypy_cache
+dist/
+*.egg-info/
