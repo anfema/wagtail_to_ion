@@ -19,9 +19,10 @@ Content:
 
 ## 2. Installation
 
-1. Add it to `INSTALLED_APPS`
+1. Add it (and wagtail media) to `INSTALLED_APPS`
 ```python
   INSTALLED_APPS = [
+      'wagtailmedia',
       'wagtail_to_ion',
       ...
   ]
@@ -35,6 +36,12 @@ Content:
 4. Add new API URLs
 ```python
     url(r'^', include('wagtail_to_ion.urls.api_urls')),
+```
+5. Override default wagtail settings;
+```python
+WAGTAILDOCS_DOCUMENT_MODEL = 'wagtail_to_ion.IonDocument'
+WAGTAILIMAGES_IMAGE_MODEL = 'wagtail_to_ion.IonImage'
+WAGTAILMEDIA_MEDIA_MODEL = 'wagtail_to_ion.IonMedia'
 ```
 
 Make sure you run a celery worker in addition to the django backend for the video conversion to work.
