@@ -8,7 +8,6 @@ from wagtail.core.models import Page
 from wagtail.admin.edit_handlers import FieldPanel, MultiFieldPanel
 from wagtail_to_ion.conf import settings
 from .abstract import AbstractCollection
-from .utils import PageMixinMeta
 
 
 if settings.ION_COLLECTION_MODEL == 'wagtail_to_ion.Collection':
@@ -16,7 +15,7 @@ if settings.ION_COLLECTION_MODEL == 'wagtail_to_ion.Collection':
         pass
 
 
-class Language(Page, metaclass=PageMixinMeta):
+class Language(Page):
     is_default = models.BooleanField(default=False)
     is_rtl = models.BooleanField(default=False)
     code = models.CharField(max_length=32)
