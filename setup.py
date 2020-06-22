@@ -26,7 +26,7 @@ setuptools.setup(
     keywords="ION Wagtail API Adapter",
     install_requires=[
         "django>=2.2",
-        "wagtail<2.8",
+        "wagtail>2.0",
         "celery[redis]>=4.3",
         "djangorestframework>=3.9",
         "beautifulsoup4>=4.6",
