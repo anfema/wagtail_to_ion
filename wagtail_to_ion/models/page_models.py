@@ -28,7 +28,7 @@ class Language(Page):
             self.slug = slugify(self.title)
         super().save(*args, **kwargs)
 
-    parent_page_types = [settings.ION_COLLECTION_MODEL]
+    # parent_page_types = [settings.ION_COLLECTION_MODEL]
 
     content_panels = [
         MultiFieldPanel([
