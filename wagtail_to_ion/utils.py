@@ -4,11 +4,8 @@ from wagtail.documents.models import get_document_model
 
 from django.utils.module_loading import import_string
 from wagtail_to_ion.conf import settings
-from wagtail_to_ion.models import get_collection_model
 
 from rest_framework.serializers import SerializerMetaclass
-
-PageCollection = get_collection_model()
 
 
 def get_user_collections(user):
@@ -59,6 +56,9 @@ def visible_tree_by_user(root, user):
 
 
 def visible_collections_by_user(user):
+    from wagtail_to_ion.models import get_collection_model
+    PageCollection = get_collection_model()
+
     collections = PageCollection.objects.filter(live=True)
     if not user.is_active:
         collections = collections.public()
