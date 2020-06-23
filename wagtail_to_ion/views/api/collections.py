@@ -13,25 +13,10 @@ from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models import get_collection_model
 from wagtail_to_ion.serializers import CollectionSerializer, CollectionDetailSerializer, DynamicPageDetailSerializer ,make_tar
 from wagtail_to_ion.views.mixins import ListMixin, TarResponseMixin
-from wagtail_to_ion.utils import visible_tree_by_user
+from wagtail_to_ion.utils import visible_tree_by_user, visible_collections_by_user
 
 
 Collection = get_collection_model()
-
-
-def visible_collections(user):
-    collections = Collection.objects.filter(live=True)
-    if not user.is_active:
-        collections = collections.public()
-    else:
-        public_collections = collections.public()
-        non_public_collections = collections.not_public().filter(
-            view_restrictions__restriction_type=PageViewRestriction.GROUPS,
-            view_restrictions__groups__in=user.groups
-        )
-        ids = public_collections.values_list('id', flat=True) + non_public_collections.values_list('id', flat=True)
-        collections = Collection.objects.filter(id__in=ids)
-    return collections
 
 
 class CollectionListView(ListMixin):
@@ -40,7 +25,7 @@ class CollectionListView(ListMixin):
     def get_queryset(self):
         user = self.request.user
         if settings.GET_PAGES_BY_USER:
-            return visible_collections(user)
+            return visible_collections_by_user(user)
         else:
             return Collection.objects.filter(live=True)
 
@@ -52,7 +37,7 @@ class CollectionDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         user = self.request.user
         if settings.GET_PAGES_BY_USER:
-            return visible_collections(user)
+            return visible_collections_by_user(user)
         else:
             return Collection.objects.filter(live=True)
 

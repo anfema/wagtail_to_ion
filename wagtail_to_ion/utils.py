@@ -4,8 +4,11 @@ from wagtail.documents.models import get_document_model
 
 from django.utils.module_loading import import_string
 from wagtail_to_ion.conf import settings
+from wagtail_to_ion.models import get_collection_model
 
 from rest_framework.serializers import SerializerMetaclass
+
+PageCollection = get_collection_model()
 
 
 def get_user_collections(user):
@@ -53,6 +56,21 @@ def visible_tree_by_user(root, user):
     )
     ids = public_tree.values_list('id', flat=True) + non_public_tree.values_list('id', flat=True)
     return Page.objects.get(id__in=ids)
+
+
+def visible_collections_by_user(user):
+    collections = PageCollection.objects.filter(live=True)
+    if not user.is_active:
+        collections = collections.public()
+    else:
+        public_collections = collections.public()
+        non_public_collections = collections.not_public().filter(
+            view_restrictions__restriction_type=PageViewRestriction.GROUPS,
+            view_restrictions__groups__in=user.groups
+        )
+        ids = public_collections.values_list('id', flat=True) + non_public_collections.values_list('id', flat=True)
+        collections = PageCollection.objects.filter(id__in=ids)
+    return collections
 
 
 def isoDate(d):
