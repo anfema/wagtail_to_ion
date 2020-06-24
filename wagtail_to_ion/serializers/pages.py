@@ -80,21 +80,26 @@ def parse_data(content_type, content, fieldname, block_type=None, streamfield=Fa
     elif content_type.__class__.__name__ == 'IonImage':
         archive = content_type.archive_rendition
         content['type'] = 'imagecontent'
-        content['mime_type'] = archive.mime_type
         try:
+            content['mime_type'] = archive.mime_type
             content['image'] = settings.BASE_URL + archive.file.url
             content['file_size'] = archive.file.file.size
             content['original_image'] = settings.BASE_URL + content_type.file.url
+            content['checksum'] = archive.checksum
+            content['width'] = archive.width
+            content['height'] = archive.height
         except ValueError as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
+                content['mime_type'] = 'application/x-empty'
                 content['image'] = 'IMAGE_MISSING'
                 content['original_image'] = 'IMAGE_MISSING'
                 content['file_size'] = 0
+                content['checksum'] = 'null:'
+                content['width'] = 0
+                content['height'] = 0
             else:
                 raise e
-        content['checksum'] = archive.checksum
-        content['width'] = archive.width
-        content['height'] = archive.height
+
         content['original_mime_type'] = content_type.mime_type
         content['original_checksum'] = content_type.checksum
         content['original_width'] = content_type.width
