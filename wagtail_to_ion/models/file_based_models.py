@@ -10,9 +10,9 @@ from django.utils.translation import ugettext_lazy as _
 from magic import from_buffer as magic_from_buffer
 from wagtail.documents.blocks import *
 from wagtail.documents.models import AbstractDocument
-from wagtail.images.models import AbstractImage, AbstractRendition
+from wagtail.images.models import AbstractImage, AbstractRendition, SourceImageIOError
 from wagtailmedia.blocks import AbstractMediaChooserBlock
-from wagtailmedia.models import AbstractMedia, SourceImageIOError
+from wagtailmedia.models import AbstractMedia
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.tasks import generate_media_rendition
