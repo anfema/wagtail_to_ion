@@ -88,7 +88,7 @@ def parse_data(content_type, content, fieldname, block_type=None, streamfield=Fa
             content['checksum'] = archive.checksum
             content['width'] = archive.width
             content['height'] = archive.height
-        except ValueError as e:
+        except (ValueError, AttributeError) as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
                 content['mime_type'] = 'application/x-empty'
                 content['image'] = 'IMAGE_MISSING'
