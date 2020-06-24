@@ -23,7 +23,13 @@ replacements = [
 
 
 def get_collection(page):
-    if page.get_parent().specific.__class__.__name__ == settings.ION_COLLECTION_MODEL.split('.')[-1]:
+    if page.get_parent() == None:
+        return None
+
+    collection_class_name = settings.ION_COLLECTION_MODEL.split('.')[-1]
+    mros = [m.__name__ for m in page.get_parent().specific.__class__.__mro__]
+
+    if page.get_parent().specific.__class__.__name__ == collection_class_name or collection_class_name in mros:
         return page.get_parent().slug
     else:
         return get_collection(page.get_parent())
@@ -316,7 +322,7 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         locale = self.context['request'].resolver_match.kwargs['locale']
         url = reverse('v1:archive-page', kwargs={
             'locale': locale,
-            'collection': get_collection(obj),
+            'collection': self.get_collection(obj),
             'slug': obj.slug,
         })
 
