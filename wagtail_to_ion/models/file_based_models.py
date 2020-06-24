@@ -12,7 +12,7 @@ from wagtail.documents.blocks import *
 from wagtail.documents.models import AbstractDocument
 from wagtail.images.models import AbstractImage, AbstractRendition
 from wagtailmedia.blocks import AbstractMediaChooserBlock
-from wagtailmedia.models import AbstractMedia
+from wagtailmedia.models import AbstractMedia, SourceImageIOError
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.tasks import generate_media_rendition
@@ -86,7 +86,12 @@ class IonImage(AbstractImage):
 
     @property
     def archive_rendition(self):
-        result = self.get_rendition('jpegquality-70')
+        try:
+            result = self.get_rendition('jpegquality-70')
+        except SourceImageIOError as e:
+            if not settings.ION_ALLOW_MISSING_FILES:
+                raise e
+            return None
 
         h = hashlib.new('sha256')
         try:
