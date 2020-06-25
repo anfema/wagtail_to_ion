@@ -44,7 +44,40 @@ def get_user_documents(user, documents=None):
     return documents
 
 
+def get_collection_for_page(page):
+    if page == None:
+        return None
+
+    collection_class_name = settings.ION_COLLECTION_MODEL.split('.')[-1]
+    mros = [m.__name__ for m in page.specific.__class__.__mro__]
+
+    if page.specific.__class__.__name__ == collection_class_name or collection_class_name in mros:
+        return page.slug
+    else:
+        return get_collection_for_page(page.get_parent())
+
+
 def visible_tree_by_user(root, user):
+    from wagtail_to_ion.models import get_collection_model
+    PageCollection = get_collection_model()
+    collection = PageCollection.objects.get(live=True, slug=get_collection_for_page(root))
+    
+    if collection.view_restrictions.exists():
+        restrictions = collection.view_restrictions.filter(
+            restriction_type=PageViewRestriction.GROUPS,
+            groups__in=user.groups.all()
+        )
+        if not restrictions.exists():
+            return Page.objects.none()
+
+    if root.view_restrictions.exists():
+        restrictions = root.view_restrictions.filter(
+            restriction_type=PageViewRestriction.GROUPS,
+            groups__in=user.groups.all()
+        )
+        if not restrictions.exists():
+            return Page.objects.none()
+
     tree = root.get_descendants().filter(live=True)
     public_tree = tree.public()
     non_public_tree = tree.not_public().filter(

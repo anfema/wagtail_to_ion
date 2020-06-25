@@ -12,7 +12,7 @@ from rest_framework.fields import empty
 from wagtail.core.models import Page, PageViewRestriction
 
 from wagtail_to_ion.conf import settings
-from wagtail_to_ion.utils import isoDate
+from wagtail_to_ion.utils import isoDate, get_collection_for_page
 from .base import DataObject
 
 
@@ -20,19 +20,6 @@ replacements = [
     (re.compile(r'<p>\s*(<br/?>)*</p>'), ''),  # All empty paragraphs filled only with whitespace or <br> tags
     (re.compile(r'<br/?>\s*</li>'), '</li>')   # All lists that end with a <br> tag before the closing </li>
 ]
-
-
-def get_collection(page):
-    if page == None:
-        return None
-
-    collection_class_name = settings.ION_COLLECTION_MODEL.split('.')[-1]
-    mros = [m.__name__ for m in page.specific.__class__.__mro__]
-
-    if page.specific.__class__.__name__ == collection_class_name or collection_class_name in mros:
-        return page.slug
-    else:
-        return get_collection(page.get_parent())
 
 
 def get_stream_field_outlet_name(fieldname, block_type, count):
@@ -230,7 +217,7 @@ def parse_data(content_type, content, fieldname, block_type=None, streamfield=Fa
             content['outlet'] = fieldname
     elif content_type.__class__.__name__ == 'Page':
         content['type'] = 'connectioncontent'
-        content['connection_string'] = '//{}/{}'.format(get_collection(content_type), content_type.slug)
+        content['connection_string'] = '//{}/{}'.format(get_collection_for_page(content_type), content_type.slug)
         if streamfield:
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
@@ -321,7 +308,7 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
     children = serializers.SerializerMethodField()
 
     def get_collection(self, obj):
-        return get_collection(obj)
+        return get_collection_for_page(obj)
 
     def get_archive(self, obj):
         locale = self.context['request'].resolver_match.kwargs['locale']
