@@ -25,7 +25,7 @@ def collect_files(request, self, page, collected_files, user):
         elif sub_field.__class__.__name__ == 'IonImage' and sub_field.include_in_archive:
             try:
                 items = {request.build_absolute_uri(sub_field.archive_rendition.url): sub_field.archive_rendition}
-            except ValueError as e:
+            except (ValueError, AttributeError) as e:
                 if settings.ION_ALLOW_MISSING_FILES is True:
                     items = {}
                 else:
@@ -40,7 +40,7 @@ def collect_files(request, self, page, collected_files, user):
                 elif content.__class__.__name__ == 'IonImage' and sub_field.include_in_archive:
                     try:
                         items[request.build_absolute_uri(content.archive_rendition.url)] = content.archive_rendition
-                    except ValueError as e:
+                    except (ValueError, AttributeError) as e:
                         if settings.ION_ALLOW_MISSING_FILES is True:
                             items = {}
                         else:
