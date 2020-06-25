@@ -49,7 +49,7 @@ def visible_tree_by_user(root, user):
     public_tree = tree.public()
     non_public_tree = tree.not_public().filter(
         view_restrictions__restriction_type=PageViewRestriction.GROUPS,
-        view_restrictions__groups__in=user.groups
+        view_restrictions__groups__in=user.groups.all()
     )
     ids = public_tree.values_list('id', flat=True) + non_public_tree.values_list('id', flat=True)
     return Page.objects.get(id__in=ids)
@@ -66,7 +66,7 @@ def visible_collections_by_user(user):
         public_collections = collections.public()
         non_public_collections = collections.not_public().filter(
             view_restrictions__restriction_type=PageViewRestriction.GROUPS,
-            view_restrictions__groups__in=user.groups
+            view_restrictions__groups__in=user.groups.all()
         )
         ids = public_collections.values_list('id', flat=True) + non_public_collections.values_list('id', flat=True)
         collections = PageCollection.objects.filter(id__in=ids)
