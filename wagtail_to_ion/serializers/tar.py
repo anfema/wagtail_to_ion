@@ -5,13 +5,14 @@ from rest_framework.renderers import JSONRenderer
 
 from wagtail_to_ion.tar import TarWriter
 from wagtail_to_ion.conf import settings
-from wagtail_to_ion.serializers import get_collection, DynamicPageDetailSerializer
+from wagtail_to_ion.serializers import DynamicPageDetailSerializer
+from wagtail_to_ion.utils import get_collection_for_page
 
 
 # TODO: refactor, where are all those functions called, hide internal functions, split into generic part and specific
 # one for pages and translations?
 def build_url(request, locale_code, page):
-    url = '/'.join(['/v1', locale_code, get_collection(page), page.slug]) + "?variation=default"
+    url = '/'.join(['/v1', locale_code, get_collection_for_page(page), page.slug]) + "?variation=default"
     return request.build_absolute_uri(url)
 
 
