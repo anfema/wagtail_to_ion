@@ -69,7 +69,7 @@ class CollectionDetailSerializer(CollectionSerializer):
             if locale_item is None:
                 locale_item = default_locale
             if settings.GET_PAGES_BY_USER:
-                return visible_tree_by_user(locale_item, user)
+                pages = visible_tree_by_user(locale_item, user)
             else:
                 pages = locale_item.get_descendants().filter(live=True)
         except ObjectDoesNotExist:

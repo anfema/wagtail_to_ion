@@ -1,8 +1,10 @@
+from django.db.models import Q
+from django.utils.module_loading import import_string
+
 from wagtail.core.models import Collection, Page, PageViewRestriction
 from wagtail.images import get_image_model
 from wagtail.documents.models import get_document_model
 
-from django.utils.module_loading import import_string
 from wagtail_to_ion.conf import settings
 
 from rest_framework.serializers import SerializerMetaclass
@@ -81,12 +83,17 @@ def visible_tree_by_user(root, user):
     tree = root.get_descendants().filter(live=True)
     public_tree = tree.public()
     non_public_tree = tree.not_public().filter(
-        view_restrictions__restriction_type=PageViewRestriction.GROUPS,
-        view_restrictions__groups__in=user.groups.all()
+        Q(
+            view_restrictions__restriction_type=PageViewRestriction.GROUPS,
+            view_restrictions__groups__in=user.groups.all()
+        ) | \
+        Q(
+            view_restrictions__isnull=True
+        )
     )
     ids = list(public_tree.values_list('id', flat=True))
     ids += list(non_public_tree.values_list('id', flat=True))
-    return Page.objects.get(id__in=ids)
+    return Page.objects.filter(id__in=ids)
 
 
 def visible_collections_by_user(user):
