@@ -328,7 +328,7 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
     def get_contents_for_user(self, obj, wrapping, request):
         # Just returns the content vanilla as user specific content is
         # a thing for the implementer of special page types
-        return obj, wrapping, request
+        return obj, True, wrapping
 
     def get_contents(self, obj):
         request = self.context['request']
@@ -367,9 +367,9 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
             public_tree = tree.public()
             non_public_tree = tree.not_public().filter(
                 view_restrictions__restriction_type=PageViewRestriction.GROUPS,
-                view_restrictions__groups__in=user.groups
+                view_restrictions__groups__in=user.groups.all()
             )
-            return public_tree.values_list('slug', flat=True) + non_public_tree.values_list('slug', flat=True)
+            return list(public_tree.values_list('slug', flat=True)) + list(non_public_tree.values_list('slug', flat=True))
         else:
             return list(obj.get_children().filter(live=True).values_list('slug', flat=True))
 
