@@ -26,33 +26,36 @@ permission_checker = PermissionPolicyChecker(permission_policy)
 
 
 # override wagtail 'register_page_listing_buttons' hook to remove unneeded buttons
-def page_listing_buttons(page, page_perms, is_parent=False):
+def page_listing_buttons(buttons, page, page_perms, is_parent=False, context=None):
+    buttons.clear()
+
     if page_perms.can_edit():
-        yield PageListingButton(
+        buttons.append(PageListingButton(
             _('Edit'),
             reverse('wagtailadmin_pages:edit', args=[page.id]),
             attrs={'title': _("Edit '{title}'").format(title=page.get_admin_display_title())},
             priority=10
-        )
+        ))
+
 
     if page_perms.can_add_subpage():
         if is_parent:
-            yield Button(
+            buttons.append(Button(
                 _('Add child page'),
                 reverse('wagtailadmin_pages:add_subpage', args=[page.id]),
                 attrs={'title': _("Add a child page to '{title}' ").format(title=page.get_admin_display_title())},
                 classes={'button', 'button-small', 'bicolor', 'icon', 'white', 'icon-plus'},
                 priority=40
-            )
+            ))
         else:
-            yield PageListingButton(
+            buttons.append(PageListingButton(
                 _('Add child page'),
                 reverse('wagtailadmin_pages:add_subpage', args=[page.id]),
                 attrs={'title': _("Add a child page to '{title}' ").format(title=page.get_admin_display_title())},
                 priority=40
-            )
+            ))
     if page_perms.user.is_superuser or ('add' in page_perms.permissions):
-        yield ButtonWithDropdownFromHook(
+        buttons.append(ButtonWithDropdownFromHook(
             _('More'),
             hook_name='register_page_listing_more_buttons',
             page=page,
@@ -61,7 +64,7 @@ def page_listing_buttons(page, page_perms, is_parent=False):
             attrs={'target': '_blank',
                     'title': _("View more options for '{title}'").format(title=page.get_admin_display_title())},
             priority=50
-        )
+        ))
 
 
 # add publish button to dropdown menu
