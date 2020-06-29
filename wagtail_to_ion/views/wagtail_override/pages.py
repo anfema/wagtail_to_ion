@@ -76,7 +76,7 @@ def page_listing_more_buttons(page, page_perms, is_parent=False):
 
 
 # WARNING: on wagtail update, check this code
-hooks._hooks['register_page_listing_buttons'] = [(page_listing_buttons, 0)]
+hooks._hooks['construct_page_listing_buttons'] = [(page_listing_buttons, 0)]
 
 
 def publish_parent_tree(page):

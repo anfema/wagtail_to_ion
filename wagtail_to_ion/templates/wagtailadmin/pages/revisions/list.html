@@ -1,35 +1,33 @@
-{# Copyright © 2017 anfema GmbH. All rights reserved.#}
 {% load i18n wagtailadmin_tags %}
 {% load l10n %}
-{% load tz %}
 
 <table class="listing">
     <col width="100%" />
 
     <thead>
         <tr>
-            <th><a href="{% url 'wagtailadmin_pages:revisions_index' page.id %}?ordering={% if ordering == "created_at" %}-{% endif %}created_at" class="icon icon-arrow-{% if ordering == "created_at" %}up-after{% elif ordering == "-created_at" %}down-after{% else %}down-after{% endif %} {% if ordering == "created_at" or ordering == "-created_at" %}teal{% endif %}">{% trans 'Revision date' %}</a></th>
+            <th>
+                <a href="{% url 'wagtailadmin_pages:revisions_index' page.id %}?ordering={% if ordering == "created_at" %}-{% endif %}created_at" class="icon icon-arrow-{% if ordering == "created_at" %}up-after{% elif ordering == "-created_at" %}down-after{% else %}down-after{% endif %} {% if ordering == "created_at" or ordering == "-created_at" %}teal{% endif %}">
+                    {% trans 'Revision date' %}
+                </a>
+            </th>
         </tr>
     </thead>
     <tbody>
         {% if revisions %}
             {% page_permissions page as page_perms %}
-			{% get_current_timezone as TIME_ZONE %}
             {% for revision in revisions %}
                 <tr {% if revision == page.get_latest_revision %}class="index"{% endif %}>
                     <td class="title">
-                        <h2>
-                            <a href="{% url 'wagtailadmin_pages:revisions_revert' page.id revision.id %}">
-								{{ revision.created_at }},
-							</a>
-							<a href="/cms/account/current_time_zone/">{{ TIME_ZONE }}</a>
+                        <div class="title-wrapper">
+                            <a href="{% url 'wagtailadmin_pages:revisions_revert' page.id revision.id %}">{{ revision.created_at }}</a>
                             <span class="unbold">
-                                {% trans 'by' context 'points to a user who created a revision' %}<span class="avatar small"><img src="{% avatar_url revision.user size=25 %}" /></span>{{ revision.user }}
+                                {% trans 'by' context 'points to a user who created a revision' %}<span class="avatar small"><img src="{% avatar_url revision.user size=25 %}" alt="" /></span>{{ revision.user }}
                             </span>
                             {% if revision == page.get_latest_revision %}({% trans 'Current draft' %}){% endif %}
                             {% if revision == page.live_revision %}({% trans 'Live version' %}){% endif %}
-                            {% if revision.approved_go_live_at %}({% trans 'Scheduled for' %} {{ revision.approved_go_live_at }}) {% endif %}
-                        </h2>
+			    {% if revision.approved_go_live_at %}({% trans 'Scheduled for' %} {{ revision.approved_go_live_at }}) {% endif %}
+                        </div>
 
                         <ul class="actions">
 {% comment %} disable preview:
@@ -45,9 +43,9 @@
                                 <li><a href="{% url 'wagtailadmin_pages:revisions_compare' page.id previous_revision.id revision.id %}" class="button button-small button-secondary">{% trans 'Compare with previous revision' %}</a></li>
                             {% endif %}
                             {% endwith %}
-                            {% if revision.approved_go_live_at and page_perms.can_unschedule %}
-                                <li><a href="{% url 'wagtailadmin_pages:revisions_unschedule' page.id revision.id %}" class="button button-small button-secondary">{% trans 'Cancel scheduled publish' %}</a></li>
-                            {% endif %}
+			    {% if revision.approved_go_live_at and page_perms.can_unschedule %}
+				<li><a href="{% url 'wagtailadmin_pages:revisions_unschedule' page.id revision.id %}" class="button button-small button-secondary">{% trans 'Cancel scheduled publish' %}</a></li>
+			    {% endif %}
                         </ul>
                     </td>
                 </tr>
@@ -57,4 +55,3 @@
         {% endif %}
     </tbody>
 </table>
-

@@ -1,4 +1,3 @@
-{# Copyright © 2017 anfema GmbH. All rights reserved.#}
 {% load i18n %}
 {% load wagtailadmin_tags %}
 
@@ -13,6 +12,8 @@
 
     {% include "wagtailadmin/pages/listing/_locked_indicator.html" with page=parent_page %}
 </h2>
+
+{% include "wagtailadmin/pages/_privacy_switch.html" with page=parent_page %}
 
 <ul class="actions">
     {% page_listing_buttons parent_page parent_page_perms is_parent=True %}
