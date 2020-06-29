@@ -1,0 +1,58 @@
+{% extends "wagtailadmin/base.html" %}
+{% load wagtailadmin_tags %}
+{% load i18n %}
+{% load l10n %}
+
+{% block titletag %}{% blocktrans with title=page.get_admin_display_title page_type=content_type.model_class.get_verbose_name %}Publish {{ page_type }}: {{ title }}{% endblocktrans %}{% endblock %}
+
+{% block content %}
+{% page_permissions page as page_perms %}
+    <header class="merged tab-merged">
+        <div class="row row-flush">
+            <div class="left col9 header-title">
+                <h1 class="icon icon-doc-empty-inverse">
+                {% blocktrans with title=page.get_admin_display_title page_type=content_type.model_class.get_verbose_name %}Publish {{ page_type }} <span>{{ title }}</span>{% endblocktrans %}</h1>
+            </div>
+        </div>
+    </header>
+
+    <div class="nice-padding">
+        <form action="" method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            <ul class="fields">
+                {% if unpublished_descendant_count >= 0 %}
+                <li>
+                    <div class="field-content">
+                        <div class="input">
+                            <label for="id_include_descendants" class="plain-checkbox-label">
+                                {% blocktrans count counter=unpublished_descendant_count %}
+                                    This page has one unpublished subpage:
+                                {% plural %}
+                                    This page has {{ unpublished_descendant_count }} unpublished subpages:
+                                {% endblocktrans %}</label>
+                            </div>
+                        </div>
+                    </li>
+                {% endif %}
+                <ul class="listing">
+                    {% for page in unpublished_descendants %}
+                        <div>
+                            <h2><a href="">{{ page.get_admin_display_title }}</a></h2>
+                            {% if page.live %}
+                                <p>Published: Yes</p>
+                            {% else %}
+                                <p>Published: No</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </ul>
+                <p>{% trans "Are you sure you want to publish this page and all of its children?" %}</p>
+                <li>
+                    <input type="submit" value="{% trans 'Yes, publish all pages.' %}" class="button">
+                    <a href="{% if next %}{{ next }}{% else %}{% url 'wagtailadmin_explore' page.get_parent.id %}{% endif %}" class="button button-secondary">{% trans "No, don't publish." %}</a>
+                </li>
+            </ul>
+        </form>
+    </div>
+{% endblock %}
