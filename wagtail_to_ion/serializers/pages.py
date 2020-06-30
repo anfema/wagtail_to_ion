@@ -279,7 +279,10 @@ class DynamicPageSerializer(serializers.ModelSerializer):
 
     def get_layout(self, obj):
         ct = ContentType.objects.get_for_id(obj.content_type_id)
+        if hasattr(ct.model_class(), 'get_layout_name'):
         return ct.model_class().get_layout_name()
+        else:
+            return ct.model_class().__name__.lower()
 
     def get_parent(self, obj):
         if obj.depth <= 4:
