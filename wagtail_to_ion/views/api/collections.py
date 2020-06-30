@@ -41,12 +41,6 @@ class CollectionDetailView(generics.RetrieveAPIView):
         else:
             return Collection.objects.filter(live=True)
 
-    def get_object(self):
-        collection_page = Collection.objects.filter(live=True).first()
-        self.kwargs[self.lookup_field] = collection_page.slug
-
-        return super().get_object()
-
 
 class CollectionArchiveView(TarResponseMixin, ListMixin):
     content_serializer_class = DynamicPageDetailSerializer
