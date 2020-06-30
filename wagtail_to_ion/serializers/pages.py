@@ -280,7 +280,7 @@ class DynamicPageSerializer(serializers.ModelSerializer):
     def get_layout(self, obj):
         ct = ContentType.objects.get_for_id(obj.content_type_id)
         if hasattr(ct.model_class(), 'get_layout_name'):
-        return ct.model_class().get_layout_name()
+            return ct.model_class().get_layout_name()
         else:
             return ct.model_class().__name__.lower()
 
@@ -290,7 +290,34 @@ class DynamicPageSerializer(serializers.ModelSerializer):
         return obj.get_parent().slug
 
     def get_meta(self, obj):
-        return {}
+        """
+        This function generated meta-data from a tuple that is returned by a class-function
+        named `metadata`. The tuple returned is a list of strings usually to define which fields
+        should be serialized into the meta structure.
+
+        If the list contains tuples they are parsed as following:
+        - tuple of 2 strings: first is the name of the field in meta, second is the real
+          model field name.
+        - tuple of a string and a callable: the callable is called with the field name and the
+          specific object to generate the value for the meta struct
+        """
+        result = {}
+        ct = ContentType.objects.get_for_id(obj.specific.content_type_id)
+        if hasattr(ct.model_class(), 'metadata'):
+            for item in ct.model_class().metadata():
+                if isinstance(item, tuple) or isinstance(item, list):
+                    field_name = item[0]
+                    generator = item[1]
+                    if callable(generator):
+                        value = generator(field_name, obj.specific)
+                    else:
+                        value = getattr(obj.specific, generator, None)
+                else:
+                    field_name = item
+                    value = getattr(obj.specific, item, None)
+                if value is not None:
+                    result[field_name] = value
+        return result
 
     class Meta:
         model = Page
