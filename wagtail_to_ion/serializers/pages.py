@@ -2,6 +2,8 @@
 import re
 import os
 
+from datetime import datetime, date
+
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 
@@ -316,6 +318,10 @@ class DynamicPageSerializer(serializers.ModelSerializer):
                     field_name = item
                     value = getattr(obj.specific, item, None)
                 if value is not None:
+                    if isinstance(value, date):
+                        value = datetime(value.year, month=value.month, day=value.day)
+                    if isinstance(value, datetime):
+                        value = isoDate(value)
                     result[field_name] = value
         return result
 

@@ -11,7 +11,7 @@ from wagtail.core.models import Page, PageViewRestriction
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models import get_collection_model
-from wagtail_to_ion.serializers import CollectionSerializer, CollectionDetailSerializer, DynamicPageDetailSerializer ,make_tar
+from wagtail_to_ion.serializers import CollectionSerializer, CollectionDetailSerializer, DynamicPageDetailSerializer, make_tar
 from wagtail_to_ion.views.mixins import ListMixin, TarResponseMixin
 from wagtail_to_ion.utils import visible_tree_by_user, visible_collections_by_user
 
