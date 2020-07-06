@@ -373,6 +373,21 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         # a thing for the implementer of special page types
         return obj, True, wrapping
 
+    def remap_outlet_name(self, outlet_path):
+        # just returns the outlet name unaltered as remapping
+        # usually happens in specialized serializers
+        return outlet_path[-1]
+
+    def remap_outlet_names_recursive(self, struct, path):
+        if 'outlet' not in struct:
+            return
+        struct['outlet'] = self.remap_outlet_name(path + [struct['outlet']])
+        
+        if 'children' not in struct:
+            return
+        for item in struct['children']:
+            self.remap_outlet_names_recursive(item, path + [struct['outlet']])
+
     def get_contents(self, obj):
         request = self.context['request']
         result = []
@@ -399,7 +414,7 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
                         # and no ``type``
                         if 'type' in content:
                             wrapping['children'].append(content)
-
+        self.remap_outlet_names_recursive(wrapping, [])
         result.append(wrapping)
         return result
 
