@@ -35,45 +35,61 @@ def parse_correct_html(content_type):
     return content
 
 
-def parse_data(content_type, content, fieldname, block_type=None, streamfield=False, count=None):
+def parse_data(content_data, content, fieldname, content_field_meta=None, block_type=None, streamfield=False, count=None):
     content['variation'] = 'default'
     content['is_searchable'] = False
 
-    if content_type.__class__.__name__ == 'list':
+    if content_data.__class__.__name__ == 'list':
         # this content is (so far) only used by the survey_link JSONField in CandidateSpecificSurvey
-        url = content_type[0]['value']
+        url = content_data[0]['value']
         content['type'] = 'textcontent'
         content['text'] = url
         content['is_multiline'] = False
         content['mime_type'] = 'text/plain'
         content['outlet'] = fieldname
-    if content_type.__class__.__name__ in ['str', 'RichText']:
+    elif content_field_meta is not None and hasattr(content_field_meta, 'choices') and content_field_meta.choices is not None:
+        # Choicefield
+        content['type'] = 'optioncontent'
+        data = content_data
+        for key, display in content_field_meta.choices:
+            if key == content_data:
+                data = display
+                break
+        if data.__class__.__name__ == 'str':
+            content['value'] = data.strip()
+        else:
+            content['value'] = data
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
+    elif content_data.__class__.__name__ in ['str', 'RichText']:
         try:
             # check if text is html
-            is_html = bool(BeautifulSoup(content_type, "html.parser").find())
+            is_html = bool(BeautifulSoup(content_data, "html.parser").find())
         except TypeError:
-            is_html = True if content_type.__class__.__name__ == 'RichText' else False
+            is_html = content_data.__class__.__name__ == 'RichText'
         if is_html:
-            content_type = parse_correct_html(content_type)
+            content_data = parse_correct_html(content_data)
         content['type'] = 'textcontent'
-        content['text'] = content_type.strip()
+        content['text'] = content_data.strip()
         content['is_multiline'] = is_html
         content['mime_type'] = 'text/html' if is_html else 'text/plain'
         if streamfield:
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
             content['outlet'] = fieldname
-        if not content_type:
+        if not content_data:
             # Do not include this outlet in the json if the field is an empty string.
             content = None
-    elif content_type.__class__.__name__ == 'IonImage':
-        archive = content_type.archive_rendition
+    elif content_data.__class__.__name__ == 'IonImage':
+        archive = content_data.archive_rendition
         content['type'] = 'imagecontent'
         try:
             content['mime_type'] = archive.mime_type
             content['image'] = settings.BASE_URL + archive.file.url
             content['file_size'] = archive.file.file.size
-            content['original_image'] = settings.BASE_URL + content_type.file.url
+            content['original_image'] = settings.BASE_URL + content_data.file.url
             content['checksum'] = archive.checksum
             content['width'] = archive.width
             content['height'] = archive.height
@@ -89,11 +105,11 @@ def parse_data(content_type, content, fieldname, block_type=None, streamfield=Fa
             else:
                 raise e
 
-        content['original_mime_type'] = content_type.mime_type
-        content['original_checksum'] = content_type.checksum
-        content['original_width'] = content_type.width
-        content['original_height'] = content_type.height
-        content['original_file_size'] = content_type.get_file_size()
+        content['original_mime_type'] = content_data.mime_type
+        content['original_checksum'] = content_data.checksum
+        content['original_width'] = content_data.width
+        content['original_height'] = content_data.height
+        content['original_file_size'] = content_data.get_file_size()
         content['translation_x'] = 0
         content['translation_y'] = 0
         content['scale'] = 1.0
@@ -101,56 +117,56 @@ def parse_data(content_type, content, fieldname, block_type=None, streamfield=Fa
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
             content['outlet'] = fieldname
-    # elif content_type.__class__.__name__ == 'StructValue':#TODO get class name color?
+    # elif content_data.__class__.__name__ == 'StructValue':#TODO get class name color?
     # 	content['type'] = 'colorcontent'
-    # 	content['r'] = content_type['r']
-    # 	content['g'] = content_type['g']
-    # 	content['b'] = content_type['b']
-    # 	content['a'] = content_type['a']
+    # 	content['r'] = content_data['r']
+    # 	content['g'] = content_data['g']
+    # 	content['b'] = content_data['b']
+    # 	content['a'] = content_data['a']
     # 	if streamfield:
     # 		content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
     # 	else:
     # 		content['outlet'] = fieldname
-    elif content_type.__class__.__name__ == 'datetime':
+    elif content_data.__class__.__name__ == 'datetime':
         content['type'] = 'datetimecontent'
-        content['datetime'] = isoDate(content_type)
+        content['datetime'] = isoDate(content_data)
         if streamfield:
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
             content['outlet'] = fieldname
-    elif content_type.__class__.__name__ == 'date':
+    elif content_data.__class__.__name__ == 'date':
         content['type'] = 'datetimecontent'
-        content['datetime'] = isoDate(datetime(content_type.year, month=content_type.month, day=content_type.day))
+        content['datetime'] = isoDate(datetime(content_data.year, month=content_data.month, day=content_data.day))
         if streamfield:
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
             content['outlet'] = fieldname
-    elif content_type.__class__.__name__ == 'IonDocument':
+    elif content_data.__class__.__name__ == 'IonDocument':
         content['type'] = 'filecontent'
-        content['mime_type'] = content_type.mime_type
-        content['name'] = content_type.url
+        content['mime_type'] = content_data.mime_type
+        content['name'] = content_data.url
         try:
-            content['file'] = settings.BASE_URL + content_type.file.url
-            content['file_size'] = content_type.file.size
+            content['file'] = settings.BASE_URL + content_data.file.url
+            content['file_size'] = content_data.file.size
         except FileNotFoundError as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
                 content['file'] = 'FILE_MISSING'
                 content['file_size'] = 0
             else:
                 raise e
-        content['checksum'] = content_type.checksum
+        content['checksum'] = content_data.checksum
         if streamfield:
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
             content['outlet'] = fieldname
-    elif content_type.__class__.__name__ == 'bool':
+    elif content_data.__class__.__name__ == 'bool':
         content['type'] = 'flagcontent'
-        content['is_enabled'] = content_type
+        content['is_enabled'] = content_data
         if streamfield:
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
             content['outlet'] = fieldname
-    elif content_type.__class__.__name__ == 'IonMedia':
+    elif content_data.__class__.__name__ == 'IonMedia':
         media_container = {}
         media_container['variation'] = 'default'
         media_container['is_searchable'] = False
@@ -167,39 +183,39 @@ def parse_data(content_type, content, fieldname, block_type=None, streamfield=Fa
         media_slot['type'] = 'mediacontent'
         thumbnail_slot['type'] = 'imagecontent'
 
-        if os.path.exists(content_type.file.path):
-            rendition = content_type.renditions.filter(transcode_finished=True).first()
+        if os.path.exists(content_data.file.path):
+            rendition = content_data.renditions.filter(transcode_finished=True).first()
             if rendition is None:
-                rendition = content_type
-            media_slot['mime_type'] = content_type.mime_type
+                rendition = content_data
+            media_slot['mime_type'] = content_data.mime_type
             media_slot['file'] = settings.BASE_URL + rendition.file.url
             media_slot['checksum'] = rendition.checksum
             media_slot['width'] = rendition.width if rendition.width else 0
             media_slot['height'] = rendition.height if rendition.height else 0
-            media_slot['length'] = content_type.duration
+            media_slot['length'] = content_data.duration
             media_slot['file_size'] = rendition.file.size
             media_slot['name'] = rendition.file.name.split('/')[1]
-            media_slot['original_mime_type'] = content_type.mime_type
-            media_slot['original_file'] = settings.BASE_URL + content_type.file.url
-            media_slot['original_checksum'] = content_type.checksum
-            media_slot['original_width'] = content_type.width if content_type.width else 0
-            media_slot['original_height'] = content_type.height if content_type.height else 0
-            media_slot['original_length'] = content_type.duration
-            media_slot['original_file_size'] = content_type.file.size
+            media_slot['original_mime_type'] = content_data.mime_type
+            media_slot['original_file'] = settings.BASE_URL + content_data.file.url
+            media_slot['original_checksum'] = content_data.checksum
+            media_slot['original_width'] = content_data.width if content_data.width else 0
+            media_slot['original_height'] = content_data.height if content_data.height else 0
+            media_slot['original_length'] = content_data.duration
+            media_slot['original_file_size'] = content_data.file.size
             media_slot['outlet'] = 'video'
 
-            thumbnail_slot['mime_type'] = content_type.thumbnail_mime_type
+            thumbnail_slot['mime_type'] = content_data.thumbnail_mime_type
             thumbnail_slot['image'] = settings.BASE_URL + rendition.thumbnail.url
             thumbnail_slot['checksum'] = rendition.thumbnail_checksum
             thumbnail_slot['width'] = rendition.width
             thumbnail_slot['height'] = rendition.height
             thumbnail_slot['file_size'] = rendition.thumbnail.size
-            thumbnail_slot['original_mime_type'] = content_type.thumbnail_mime_type
-            thumbnail_slot['original_image'] = settings.BASE_URL + content_type.thumbnail.url
-            thumbnail_slot['original_checksum'] = content_type.thumbnail_checksum
-            thumbnail_slot['original_width'] = content_type.width
-            thumbnail_slot['original_height'] = content_type.height
-            thumbnail_slot['original_file_size'] = content_type.thumbnail.size
+            thumbnail_slot['original_mime_type'] = content_data.thumbnail_mime_type
+            thumbnail_slot['original_image'] = settings.BASE_URL + content_data.thumbnail.url
+            thumbnail_slot['original_checksum'] = content_data.thumbnail_checksum
+            thumbnail_slot['original_width'] = content_data.width
+            thumbnail_slot['original_height'] = content_data.height
+            thumbnail_slot['original_file_size'] = content_data.thumbnail.size
             thumbnail_slot['translation_x'] = 0
             thumbnail_slot['translation_y'] = 0
             thumbnail_slot['scale'] = 1.0
@@ -208,30 +224,30 @@ def parse_data(content_type, content, fieldname, block_type=None, streamfield=Fa
         fill_contents(media_slot, media_container)
         fill_contents(thumbnail_slot, media_container)
         return media_container
-    elif content_type.__class__.__name__ in ['int', 'float', 'Decimal']:
+    elif content_data.__class__.__name__ in ['int', 'float', 'Decimal']:
         content['type'] = 'numbercontent'
-        content['value'] = content_type
+        content['value'] = content_data
         if streamfield:
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
             content['outlet'] = fieldname
-    elif content_type.__class__.__name__ == 'dict':
+    elif content_data.__class__.__name__ == 'dict':
         content['type'] = 'tablecontent'
-        content['cells'] = content_type['data']
-        content['first_row_header'] = content_type['first_row_is_table_header']
-        content['first_col_header'] = content_type['first_col_is_header']
+        content['cells'] = content_data['data']
+        content['first_row_header'] = content_data['first_row_is_table_header']
+        content['first_col_header'] = content_data['first_col_is_header']
         if streamfield:
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
             content['outlet'] = fieldname
-    elif content_type.__class__.__name__ == 'Page':
+    elif content_data.__class__.__name__ == 'Page':
         content['type'] = 'connectioncontent'
-        content['connection_string'] = '//{}/{}'.format(get_collection_for_page(content_type), content_type.slug)
+        content['connection_string'] = '//{}/{}'.format(get_collection_for_page(content_data), content_data.slug)
         if streamfield:
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
             content['outlet'] = fieldname
-    elif content_type.__class__.__name__ == 'StreamValue':
+    elif content_data.__class__.__name__ == 'StreamValue':
         content['type'] = 'containercontent'
         if streamfield:
             content['outlet'] = get_stream_field_outlet_name(fieldname, 'container', count)
@@ -240,8 +256,8 @@ def parse_data(content_type, content, fieldname, block_type=None, streamfield=Fa
 
         # parse content for all wagtail streamfield block fields
         children = []
-        for idx, item in enumerate(content_type):
-            children.append(parse_data(item.value, {}, fieldname, item.block_type, True, idx))
+        for idx, item in enumerate(content_data):
+            children.append(parse_data(item.value, {}, fieldname, block_type=item.block_type, stream_field=True, count=idx))
 
         # flatten
         if len(children) == 1:
@@ -250,10 +266,10 @@ def parse_data(content_type, content, fieldname, block_type=None, streamfield=Fa
             return children
         else:
             return None
-    elif content_type.__class__.__name__ == 'StructValue':
+    elif content_data.__class__.__name__ == 'StructValue':
         result = []
-        for item in content_type:
-            r = parse_data(content_type[item], {}, item)
+        for item in content_data:
+            r = parse_data(content_data[item], {}, item, content_field_meta=content_field_meta)
             if r is None:
                 continue
             r['variation'] = 'default'
@@ -401,10 +417,15 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
             obj, page_filled, wrapping = self.get_contents_for_user(obj, wrapping, request)
         if page_filled:
             for field in obj.specific.content_panels:
-                field_type = getattr(obj.specific, field.field_name)
+                field_data = getattr(obj.specific, field.field_name)
+                field_type = None
+                for fieldmeta in obj.specific._meta.fields:
+                    if fieldmeta.name == field.field_name:
+                        field_type = fieldmeta
+                        break
                 content = {}
                 # parse content for all standard django and wagtail fields
-                content = parse_data(field_type, content, field.field_name)
+                content = parse_data(field_data, content, field.field_name, content_field_meta=field_type)
                 if content:
                     if isinstance(content, list):
                         wrapping['children'].extend(content)
