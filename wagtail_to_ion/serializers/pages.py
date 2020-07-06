@@ -118,6 +118,13 @@ def parse_data(content_type, content, fieldname, block_type=None, streamfield=Fa
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
             content['outlet'] = fieldname
+    elif content_type.__class__.__name__ == 'date':
+        content['type'] = 'datetimecontent'
+        content['datetime'] = isoDate(datetime(content_type.year, month=content_type.month, day=content_type.day))
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     elif content_type.__class__.__name__ == 'IonDocument':
         content['type'] = 'filecontent'
         content['mime_type'] = content_type.mime_type
