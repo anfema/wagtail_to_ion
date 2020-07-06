@@ -59,7 +59,7 @@ with open("README.md", "r") as fd:
 
 setuptools.setup(
     name="wagtail_to_ion",
-    version="1.1.1",
+    version="1.1.2",
     author="anfema GmbH",
     author_email="admin@anfe.ma",
     description="Wagtail to ION API adapter",
