@@ -6,6 +6,7 @@ from datetime import datetime, date
 
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
+from django.db import models
 
 from bs4 import BeautifulSoup
 from rest_framework import serializers
@@ -47,6 +48,8 @@ def parse_data(content_data, content, fieldname, content_field_meta=None, block_
         content['is_multiline'] = False
         content['mime_type'] = 'text/plain'
         content['outlet'] = fieldname
+        if streamfield:
+            content['position'] = count
     elif content_field_meta is not None and hasattr(content_field_meta, 'choices') and content_field_meta.choices is not None:
         # Choicefield
         content['type'] = 'optioncontent'
@@ -59,10 +62,9 @@ def parse_data(content_data, content, fieldname, content_field_meta=None, block_
             content['value'] = data.strip()
         else:
             content['value'] = data
+        content['outlet'] = fieldname
         if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
+            content['position'] = count
     elif content_data.__class__.__name__ in ['str', 'RichText']:
         try:
             # check if text is html
@@ -75,10 +77,9 @@ def parse_data(content_data, content, fieldname, content_field_meta=None, block_
         content['text'] = content_data.strip()
         content['is_multiline'] = is_html
         content['mime_type'] = 'text/html' if is_html else 'text/plain'
+        content['outlet'] = fieldname
         if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
+            content['position'] = count
         if not content_data:
             # Do not include this outlet in the json if the field is an empty string.
             content = None
@@ -113,10 +114,9 @@ def parse_data(content_data, content, fieldname, content_field_meta=None, block_
         content['translation_x'] = 0
         content['translation_y'] = 0
         content['scale'] = 1.0
+        content['outlet'] = fieldname
         if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
+            content['position'] = count
     # elif content_data.__class__.__name__ == 'StructValue':#TODO get class name color?
     # 	content['type'] = 'colorcontent'
     # 	content['r'] = content_data['r']
@@ -130,17 +130,15 @@ def parse_data(content_data, content, fieldname, content_field_meta=None, block_
     elif content_data.__class__.__name__ == 'datetime':
         content['type'] = 'datetimecontent'
         content['datetime'] = isoDate(content_data)
+        content['outlet'] = fieldname
         if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
+            content['position'] = count
     elif content_data.__class__.__name__ == 'date':
         content['type'] = 'datetimecontent'
         content['datetime'] = isoDate(datetime(content_data.year, month=content_data.month, day=content_data.day))
+        content['outlet'] = fieldname
         if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
+            content['position'] = count
     elif content_data.__class__.__name__ == 'IonDocument':
         content['type'] = 'filecontent'
         content['mime_type'] = content_data.mime_type
@@ -155,26 +153,23 @@ def parse_data(content_data, content, fieldname, content_field_meta=None, block_
             else:
                 raise e
         content['checksum'] = content_data.checksum
+        content['outlet'] = fieldname
         if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
+            content['position'] = count
     elif content_data.__class__.__name__ == 'bool':
         content['type'] = 'flagcontent'
         content['is_enabled'] = content_data
+        content['outlet'] = fieldname
         if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
+            content['position'] = count
     elif content_data.__class__.__name__ == 'IonMedia':
         media_container = {}
         media_container['variation'] = 'default'
         media_container['is_searchable'] = False
         media_container['type'] = 'containercontent'
+        media_container['outlet'] = 'mediacontainer_{}'.format(fieldname)
         if streamfield:
-            media_container['outlet'] = get_stream_field_outlet_name(fieldname, 'mediacontainer', count)
-        else:
-            media_container['outlet'] = 'mediacontainer_{}'.format(fieldname)
+            media_container['position'] = count
         media_container['children'] = []
 
         media_slot = {}
@@ -227,33 +222,34 @@ def parse_data(content_data, content, fieldname, content_field_meta=None, block_
     elif content_data.__class__.__name__ in ['int', 'float', 'Decimal']:
         content['type'] = 'numbercontent'
         content['value'] = content_data
+        content['outlet'] = fieldname
         if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
+            content['position'] = count
     elif content_data.__class__.__name__ == 'dict':
         content['type'] = 'tablecontent'
         content['cells'] = content_data['data']
         content['first_row_header'] = content_data['first_row_is_table_header']
         content['first_col_header'] = content_data['first_col_is_header']
+        content['outlet'] = fieldname
         if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
+            content['position'] = count
     elif content_data.__class__.__name__ == 'Page':
         content['type'] = 'connectioncontent'
         content['connection_string'] = '//{}/{}'.format(get_collection_for_page(content_data), content_data.slug)
+        content['outlet'] = fieldname
         if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
+            content['position'] = count
+    elif Page in content_data.__class__.__mro__:
+        content['type'] = 'connectioncontent'
+        content['connection_string'] = '//{}/{}'.format(get_collection_for_page(content_data), content_data.slug)
+        content['outlet'] = fieldname
+        if streamfield:
+            content['position'] = count
     elif content_data.__class__.__name__ == 'StreamValue':
         content['type'] = 'containercontent'
+        content['outlet'] = '{}_container'.format(fieldname)
         if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, 'container', count)
-        else:
-            content['outlet'] = '{}_container'.format(fieldname)
-
+            content['position'] = count
         # parse content for all wagtail streamfield block fields
         children = []
         for idx, item in enumerate(content_data):
@@ -277,10 +273,9 @@ def parse_data(content_data, content, fieldname, content_field_meta=None, block_
             result.append(r)
 
         content['type'] = 'containercontent'
+        content['outlet'] = '{}_container_{}'.format(fieldname, count)
         if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, 'container', count)
-        else:
-            content['outlet'] = '{}_container_{}'.format(fieldname, count)
+            content['position'] = count
         content['children'] = result
     return content
 
