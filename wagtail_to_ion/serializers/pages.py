@@ -257,7 +257,7 @@ def parse_data(content_data, content, fieldname, content_field_meta=None, block_
         # parse content for all wagtail streamfield block fields
         children = []
         for idx, item in enumerate(content_data):
-            children.append(parse_data(item.value, {}, fieldname, block_type=item.block_type, stream_field=True, count=idx))
+            children.append(parse_data(item.value, {}, fieldname, block_type=item.block_type, streamfield=True, count=idx))
 
         # flatten
         if len(children) == 1:
