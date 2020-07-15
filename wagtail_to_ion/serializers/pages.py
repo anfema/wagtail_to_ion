@@ -336,7 +336,11 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
             'slug': obj.slug,
         })
 
-        url = self.context['request'].build_absolute_uri(url)
+        url = self.context['request'].build_absolute_uri(url) + '?variation={}'.format(
+            self.context['request'].GET.get(
+                'variation', 'default'
+            )
+        )
 
         return url
 
@@ -357,7 +361,7 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         if 'outlet' not in struct:
             return
         struct['outlet'] = self.remap_outlet_name(path + [struct['outlet']])
-        
+
         if 'children' not in struct:
             return
         for item in struct['children']:
