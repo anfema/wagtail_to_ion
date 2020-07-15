@@ -16,7 +16,7 @@ def package_data_with_recursive_dirs(package_data_spec):
     that the resulting package_data contains all files (optionally
     filtered by pattern) encountered by recursively searching the
     directory.
-    
+
     Usage:
     setup(
     ...
@@ -59,7 +59,7 @@ with open("README.md", "r") as fd:
 
 setuptools.setup(
     name="wagtail_to_ion",
-    version="1.1.5",
+    version="1.1.6",
     author="anfema GmbH",
     author_email="admin@anfe.ma",
     description="Wagtail to ION API adapter",
