@@ -39,7 +39,7 @@ class CollectionSerializer(DataObject):
             'locale': locale,
             'collection': obj.slug,
         })
-        url = self.context['request'].build_absolute_uri(url)
+        url = self.context['request'].build_absolute_uri(url) + '?variation={}'.format(self.context['request'].GET.get('variation', 'default'))
         return url
 
     class Meta:
@@ -49,7 +49,7 @@ class CollectionSerializer(DataObject):
 
 class CollectionDetailSerializer(CollectionSerializer):
     pages = serializers.SerializerMethodField()
-    
+
     content_serializer_class = DynamicPageSerializer
 
     def get_pages(self, obj):

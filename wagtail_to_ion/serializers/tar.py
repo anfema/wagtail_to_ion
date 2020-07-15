@@ -11,8 +11,8 @@ from wagtail_to_ion.utils import get_collection_for_page
 
 # TODO: refactor, where are all those functions called, hide internal functions, split into generic part and specific
 # one for pages and translations?
-def build_url(request, locale_code, page):
-    url = '/'.join(['/v1', locale_code, get_collection_for_page(page), page.slug]) + "?variation=default"
+def build_url(request, locale_code, page, variation='default'):
+    url = '/'.join(['/v1', locale_code, get_collection_for_page(page), page.slug]) + "?variation={}".format(variation)
     return request.build_absolute_uri(url)
 
 
@@ -114,7 +114,7 @@ def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSer
 
     # create index
     index_file = []
-    url = build_url(request, locale, page)
+    url = build_url(request, locale, page, variation=request.GET.get('variation', 'default'))
 
     index_file.append({
         "url": url,
@@ -211,7 +211,7 @@ def make_pagemeta(page, locale_code, request):
 
     # create index
     index_file = []
-    url = build_url(request, locale_code, page)
+    url = build_url(request, locale_code, page, variation=request.GET.get('variation', 'default'))
 
     index_file.append({
         "url": url,
