@@ -126,7 +126,7 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
     elif content_data.__class__.__name__ == 'IonDocument':
         content['type'] = 'filecontent'
         content['mime_type'] = content_data.mime_type
-        content['name'] = content_data.url
+        content['name'] = content_data.title
         try:
             content['file'] = settings.BASE_URL + content_data.file.url
             content['file_size'] = content_data.file.size
@@ -167,7 +167,7 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
             media_slot['height'] = rendition.height if rendition.height else 0
             media_slot['length'] = content_data.duration
             media_slot['file_size'] = rendition.file.size
-            media_slot['name'] = rendition.file.name.split('/')[1]
+            media_slot['name'] = content_data.title
             media_slot['original_mime_type'] = content_data.mime_type
             media_slot['original_file'] = settings.BASE_URL + content_data.file.url
             media_slot['original_checksum'] = content_data.checksum
