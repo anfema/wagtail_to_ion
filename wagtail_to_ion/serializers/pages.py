@@ -300,7 +300,7 @@ class DynamicPageSerializer(serializers.ModelSerializer):
                     field_name = item
                     value = getattr(obj.specific, item, None)
                 if value is not None:
-                    if isinstance(value, date):
+                    if not isinstance(value, datetime) and isinstance(value, date):
                         value = datetime(value.year, month=value.month, day=value.day)
                     if isinstance(value, datetime):
                         value = isoDate(value)
