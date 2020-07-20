@@ -6,7 +6,6 @@ from django.db import models
 from django.db.utils import cached_property
 from django.utils.translation import ugettext_lazy as _
 
-
 from magic import from_buffer as magic_from_buffer
 from wagtail.documents.blocks import *
 from wagtail.documents.models import AbstractDocument
