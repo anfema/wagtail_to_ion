@@ -1,6 +1,8 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
 import json
 import os
+
+from django.urls import reverse
 from rest_framework.renderers import JSONRenderer
 
 from wagtail_to_ion.tar import TarWriter
@@ -9,11 +11,13 @@ from wagtail_to_ion.serializers import DynamicPageDetailSerializer
 from wagtail_to_ion.utils import get_collection_for_page
 
 
-# TODO: refactor, where are all those functions called, hide internal functions, split into generic part and specific
-# one for pages and translations?
 def build_url(request, locale_code, page, variation='default'):
-    url = '/'.join(['/v1', locale_code, get_collection_for_page(page), page.slug]) + "?variation={}".format(variation)
-    return request.build_absolute_uri(url)
+    url = reverse('v1:page-detail', kwargs={
+        'locale': locale_code,
+        'collection': get_collection_for_page(page),
+        'slug': page.slug,
+    })
+    return request.build_absolute_uri(url) + "?variation={}".format(variation)
 
 
 def collect_files(request, self, page, collected_files, user):
