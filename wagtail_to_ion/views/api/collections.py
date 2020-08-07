@@ -1,6 +1,8 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
 from datetime import datetime
 
+from email.utils import parsedate_to_datetime
+
 from django.http import Http404, HttpResponse
 from django.core.exceptions import ObjectDoesNotExist
 
@@ -82,8 +84,14 @@ class CollectionArchiveView(TarResponseMixin, ListMixin):
         if not pages or len(pages) == 0:
             raise Http404
 
+        last_updated = None
         if 'lastUpdated' in request.GET:
             last_updated = datetime.strptime(request.GET['lastUpdated'], '%Y-%m-%dT%H:%M:%SZ')
+            
+        if 'HTTP_IF_MODIFIED_SINCE' in request.META:
+            last_updated = parsedate_to_datetime(request.META['HTTP_IF_MODIFIED_SINCE'])
+
+        if last_updated:
             updated_pages = Page.objects.filter(
                 last_published_at__gt=last_updated,
                 id__in=pages.values_list("id", flat=True)
