@@ -3,6 +3,7 @@ import hashlib
 import os
 
 from django.db import models
+from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
 
 from magic import from_buffer as magic_from_buffer
@@ -13,7 +14,7 @@ from wagtailmedia.models import AbstractMedia
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models import get_ion_media_rendition_model
-from wagtail_to_ion.tasks import generate_media_rendition
+from wagtail_to_ion.tasks import generate_media_rendition, get_audio_metadata
 
 
 BUFFER_SIZE = 64 * 1024
@@ -142,8 +143,8 @@ class AbstractIonMedia(AbstractMedia):
     width = models.PositiveIntegerField(null=True, blank=True, verbose_name=_('width'))
     height = models.PositiveIntegerField(null=True, blank=True, verbose_name=_('height'))
 
-    thumbnail_checksum = models.CharField(max_length=255)
-    thumbnail_mime_type = models.CharField(max_length=128)
+    thumbnail_checksum = models.CharField(blank=True, max_length=255)
+    thumbnail_mime_type = models.CharField(blank=True, max_length=128)
     include_in_archive = models.BooleanField(
         default=False,
         help_text="If enabled, the file will be included in the ION archive "
@@ -161,6 +162,13 @@ class AbstractIonMedia(AbstractMedia):
         abstract = True
 
     def save(self, *args, **kwargs):
+        # handle audio files
+        if self.type == 'audio':
+            self.set_media_metadata()
+            super().save(*args, **kwargs)
+            return
+
+        # handle video files
         needs_transcode = False
         needs_thumbnail = False
         try:
@@ -178,33 +186,10 @@ class AbstractIonMedia(AbstractMedia):
                 pass
 
         if needs_thumbnail:
-            try:
-                self.thumbnail.open()
-                h = hashlib.new('sha256')
-                buffer = self.thumbnail.read(BUFFER_SIZE)
-                if not self.thumbnail_mime_type:
-                    self.thumbnail_mime_type = magic_from_buffer(buffer, mime=True)
-                while len(buffer) > 0:
-                    h.update(buffer)
-                    buffer = self.thumbnail.read(BUFFER_SIZE)
-                self.thumbnail_checksum = 'sha256:' + h.hexdigest()
-            except FileNotFoundError as exception:
-                raise exception
-            except ValueError:
-                pass
+            self.set_thumbnail_metadata()
 
         if needs_transcode:
-            try:
-                self.file.open()
-                h = hashlib.new('sha256')
-                buffer = self.file.read(BUFFER_SIZE)
-                self.mime_type = magic_from_buffer(buffer, mime=True)
-                while len(buffer) > 0:
-                    h.update(buffer)
-                    buffer = self.file.read(BUFFER_SIZE)
-                self.checksum = 'sha256:' + h.hexdigest()
-            except FileNotFoundError as exception:
-                raise exception
+            self.set_media_metadata()
 
         super().save(*args, **kwargs)
         try:
@@ -215,23 +200,7 @@ class AbstractIonMedia(AbstractMedia):
 
         # remove all renditions and generate new ones
         if needs_transcode:
-            renditions = []
-            for rendition in self.renditions.all():
-                rendition.delete()
-            for key, config in settings.ION_VIDEO_RENDITIONS.items():
-                rendition = get_ion_media_rendition_model().objects.create(
-                    name=key,
-                    media_item=self
-                )
-                if not self.mime_type.startswith('video/'):
-                    rendition.transcode_errors = 'Not a video file'
-                    rendition.save()
-                renditions.append(rendition)
-
-            if self.mime_type.startswith('video/'):
-                # Run transcode in background
-                for rendition in renditions:
-                    generate_media_rendition.delay(rendition.id)
+            self.create_renditions()
 
     def delete(self, *args, **kwargs):
         try:
@@ -246,6 +215,54 @@ class AbstractIonMedia(AbstractMedia):
         for rendition in self.renditions.all():
             rendition.delete()
         super().delete(*args, **kwargs)
+
+    def set_media_metadata(self):
+        self.file.open()
+        h = hashlib.new('sha256')
+        buffer = self.file.read(BUFFER_SIZE)
+        self.mime_type = magic_from_buffer(buffer, mime=True)
+        while len(buffer) > 0:
+            h.update(buffer)
+            buffer = self.file.read(BUFFER_SIZE)
+        self.checksum = 'sha256:' + h.hexdigest()
+        self.file.seek(0)
+
+        if self.type == 'audio':
+            metadata = get_audio_metadata(self.file)
+            self.duration = round(float(metadata.get('duration')))
+
+    def set_thumbnail_metadata(self):
+        try:
+            self.thumbnail.open()
+            h = hashlib.new('sha256')
+            buffer = self.thumbnail.read(BUFFER_SIZE)
+            if not self.thumbnail_mime_type:
+                self.thumbnail_mime_type = magic_from_buffer(buffer, mime=True)
+            while len(buffer) > 0:
+                h.update(buffer)
+                buffer = self.thumbnail.read(BUFFER_SIZE)
+            self.thumbnail_checksum = 'sha256:' + h.hexdigest()
+        except ValueError:
+            pass
+
+    def create_renditions(self):
+        renditions = []
+        for rendition in self.renditions.all():
+            rendition.delete()
+        for key, config in settings.ION_VIDEO_RENDITIONS.items():
+            rendition = get_ion_media_rendition_model().objects.create(
+                name=key,
+                media_item=self,
+            )
+            if not self.mime_type.startswith('video/'):
+                rendition.transcode_errors = 'Not a video file'
+                rendition.save()
+            renditions.append(rendition)
+
+        if self.mime_type.startswith('video/'):
+            # Run transcode in background
+            for rendition in renditions:
+                generate_media_rendition.delay(rendition.id)
 
 
 class AbstractIonMediaRendition(models.Model):
