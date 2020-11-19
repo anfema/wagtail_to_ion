@@ -3,13 +3,12 @@ import hashlib
 import os
 
 from django.db import models
-from django.db.utils import cached_property
 from django.utils.translation import ugettext_lazy as _
 
 from magic import from_buffer as magic_from_buffer
 from wagtail.documents.blocks import *
 from wagtail.documents.models import AbstractDocument
-from wagtail.images.models import AbstractImage, AbstractRendition, SourceImageIOError
+from wagtail.images.models import AbstractImage, AbstractRendition
 from wagtailmedia.blocks import AbstractMediaChooserBlock
 from wagtailmedia.models import AbstractMedia
 
@@ -53,6 +52,7 @@ class IonDocument(AbstractDocument):
 class IonImage(AbstractImage):
     checksum = models.CharField(max_length=255)
     mime_type = models.CharField(max_length=128)
+    rendition_type = models.CharField(max_length=128, default='jpegquality-70')
     include_in_archive = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
     admin_form_fields = (
@@ -85,17 +85,13 @@ class IonImage(AbstractImage):
 
     @property
     def archive_rendition(self):
-        try:
-            result = self.get_rendition('jpegquality-70')
-        except SourceImageIOError as e:
-            if not settings.ION_ALLOW_MISSING_FILES:
-                raise e
-            return None
+        result = self.get_rendition(self.rendition_type)
 
         h = hashlib.new('sha256')
         try:
             result.file.open()
             buffer = result.file.read(BUFFER_SIZE)
+            mime_type = magic_from_buffer(buffer, mime=True)
             while len(buffer) > 0:
                 h.update(buffer)
                 buffer = result.file.read(BUFFER_SIZE)
@@ -108,7 +104,7 @@ class IonImage(AbstractImage):
                 raise e
 
         setattr(result, 'checksum', 'sha256:' + h.hexdigest())
-        setattr(result, 'mime_type', 'image/jpeg')
+        setattr(result, 'mime_type', mime_type)
         return result
 
 
