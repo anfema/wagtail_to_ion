@@ -157,42 +157,56 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
         thumbnail_slot['type'] = 'imagecontent'
 
         if os.path.exists(content_data.file.path):
-            rendition = content_data.renditions.filter(transcode_finished=True).first()
-            if rendition is None:
-                rendition = content_data
-            media_slot['mime_type'] = content_data.mime_type
-            media_slot['file'] = settings.BASE_URL + rendition.file.url
-            media_slot['checksum'] = rendition.checksum
-            media_slot['width'] = rendition.width if rendition.width else 0
-            media_slot['height'] = rendition.height if rendition.height else 0
-            media_slot['length'] = content_data.duration
-            media_slot['file_size'] = rendition.file.size
-            media_slot['name'] = content_data.title
-            media_slot['original_mime_type'] = content_data.mime_type
-            media_slot['original_file'] = settings.BASE_URL + content_data.file.url
-            media_slot['original_checksum'] = content_data.checksum
-            media_slot['original_width'] = content_data.width if content_data.width else 0
-            media_slot['original_height'] = content_data.height if content_data.height else 0
-            media_slot['original_length'] = content_data.duration
-            media_slot['original_file_size'] = content_data.file.size
-            media_slot['outlet'] = 'video'
+            if content_data.type == 'audio':
+                media_slot['mime_type'] = content_data.mime_type
+                media_slot['file'] = settings.BASE_URL + content_data.file.url
+                media_slot['checksum'] = content_data.checksum
+                media_slot['length'] = content_data.duration
+                media_slot['file_size'] = content_data.file.size
+                media_slot['name'] = content_data.title
+                media_slot['original_mime_type'] = content_data.mime_type
+                media_slot['original_file'] = settings.BASE_URL + content_data.file.url
+                media_slot['original_checksum'] = content_data.checksum
+                media_slot['original_length'] = content_data.duration
+                media_slot['original_file_size'] = content_data.file.size
+                media_slot['outlet'] = 'audio'
+            else:
+                rendition = content_data.renditions.filter(transcode_finished=True).first()
+                if rendition is None:
+                    rendition = content_data
+                media_slot['mime_type'] = content_data.mime_type
+                media_slot['file'] = settings.BASE_URL + rendition.file.url
+                media_slot['checksum'] = rendition.checksum
+                media_slot['width'] = rendition.width if rendition.width else 0
+                media_slot['height'] = rendition.height if rendition.height else 0
+                media_slot['length'] = content_data.duration
+                media_slot['file_size'] = rendition.file.size
+                media_slot['name'] = content_data.title
+                media_slot['original_mime_type'] = content_data.mime_type
+                media_slot['original_file'] = settings.BASE_URL + content_data.file.url
+                media_slot['original_checksum'] = content_data.checksum
+                media_slot['original_width'] = content_data.width if content_data.width else 0
+                media_slot['original_height'] = content_data.height if content_data.height else 0
+                media_slot['original_length'] = content_data.duration
+                media_slot['original_file_size'] = content_data.file.size
+                media_slot['outlet'] = 'video'
 
-            thumbnail_slot['mime_type'] = content_data.thumbnail_mime_type
-            thumbnail_slot['image'] = settings.BASE_URL + rendition.thumbnail.url
-            thumbnail_slot['checksum'] = rendition.thumbnail_checksum
-            thumbnail_slot['width'] = rendition.width
-            thumbnail_slot['height'] = rendition.height
-            thumbnail_slot['file_size'] = rendition.thumbnail.size
-            thumbnail_slot['original_mime_type'] = content_data.thumbnail_mime_type
-            thumbnail_slot['original_image'] = settings.BASE_URL + content_data.thumbnail.url
-            thumbnail_slot['original_checksum'] = content_data.thumbnail_checksum
-            thumbnail_slot['original_width'] = content_data.width
-            thumbnail_slot['original_height'] = content_data.height
-            thumbnail_slot['original_file_size'] = content_data.thumbnail.size
-            thumbnail_slot['translation_x'] = 0
-            thumbnail_slot['translation_y'] = 0
-            thumbnail_slot['scale'] = 1.0
-            thumbnail_slot['outlet'] = "video_thumbnail"
+                thumbnail_slot['mime_type'] = content_data.thumbnail_mime_type
+                thumbnail_slot['image'] = settings.BASE_URL + rendition.thumbnail.url
+                thumbnail_slot['checksum'] = rendition.thumbnail_checksum
+                thumbnail_slot['width'] = rendition.width
+                thumbnail_slot['height'] = rendition.height
+                thumbnail_slot['file_size'] = rendition.thumbnail.size
+                thumbnail_slot['original_mime_type'] = content_data.thumbnail_mime_type
+                thumbnail_slot['original_image'] = settings.BASE_URL + content_data.thumbnail.url
+                thumbnail_slot['original_checksum'] = content_data.thumbnail_checksum
+                thumbnail_slot['original_width'] = content_data.width
+                thumbnail_slot['original_height'] = content_data.height
+                thumbnail_slot['original_file_size'] = content_data.thumbnail.size
+                thumbnail_slot['translation_x'] = 0
+                thumbnail_slot['translation_y'] = 0
+                thumbnail_slot['scale'] = 1.0
+                thumbnail_slot['outlet'] = "video_thumbnail"
 
         fill_contents(media_slot, media_container)
         fill_contents(thumbnail_slot, media_container)

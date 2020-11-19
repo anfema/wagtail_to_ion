@@ -3,12 +3,18 @@ import os
 import subprocess
 import json
 import hashlib
+from tempfile import NamedTemporaryFile
+
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
+from django.db.models.fields.files import FieldFile
 
 from wagtail_to_ion.conf import settings
 
 from celery import shared_task
 
+
 BUFFER_SIZE = 64 * 1024
+
 
 def new_empty_thumbnail(suffix):
     data = bytes.fromhex('''
@@ -307,3 +313,48 @@ def generate_media_rendition(rendition_id: int):
         else:
             rendition.transcode_errors += str(e)
         rendition.save()
+
+
+def extract_media_format(file_path):
+    ffprobe = os.path.expanduser('~/bin/ffprobe')
+    if not os.path.exists(ffprobe):
+        ffprobe = 'ffprobe'
+
+    probe = [
+        ffprobe,
+        '-print_format', 'json',
+        '-show_format',
+        '-i', file_path,
+    ]
+
+    try:
+        result = subprocess.run(
+            probe,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        print(e.stderr)
+        raise
+
+    return json.loads(result.stdout.decode('utf-8'))
+
+
+def get_audio_metadata(media_item: FieldFile):
+    if isinstance(media_item.file, InMemoryUploadedFile):
+        with NamedTemporaryFile(delete=False) as temp_file:
+            media_item.file.open()
+            temp_file.write(media_item.file.read())
+            temp_file.close()
+            mediainfo = extract_media_format(temp_file.name)
+            try:
+                os.remove(temp_file.name)
+            except OSError:
+                pass
+    elif isinstance(media_item.file, TemporaryUploadedFile):
+        mediainfo = extract_media_format(media_item.file.temporary_file_path())
+    else:
+        mediainfo = extract_media_format(media_item.path)
+
+    return mediainfo.get('format', {})
