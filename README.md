@@ -37,12 +37,64 @@ Content:
 ```python
     url(r'^', include('wagtail_to_ion.urls.api_urls')),
 ```
-5. Override default wagtail settings;
+
+5. Create required models in your project inheriting from the abstract models provided by `wagtail_to_ion`:
 ```python
-WAGTAILDOCS_DOCUMENT_MODEL = 'wagtail_to_ion.IonDocument'
-WAGTAILIMAGES_IMAGE_MODEL = 'wagtail_to_ion.IonImage'
-WAGTAILMEDIA_MEDIA_MODEL = 'wagtail_to_ion.IonMedia'
+from wagtail_to_ion.models.abstract import AbstractIonCollection, AbstractIonPage
+from wagtail_to_ion.models.content_type_description import AbstractContentTypeDescription
+from wagtail_to_ion.models.file_based_models import AbstractIonDocument, AbstractIonImage, AbstractIonMedia, \
+    AbstractIonMediaRendition, AbstractIonRendition
+from wagtail_to_ion.models.page_models import AbstractIonLanguage
+
+
+class ContentTypeDescription(AbstractContentTypeDescription):
+    pass
+
+
+class IonCollection(AbstractIonCollection):
+    pass
+
+
+class IonLanguage(AbstractIonLanguage):
+    pass
+
+
+class IonDocument(AbstractIonDocument):
+    pass
+
+
+class IonImage(AbstractIonImage):
+    pass
+
+
+class IonRendition(AbstractIonRendition):
+    pass
+
+
+class IonMedia(AbstractIonMedia):
+    pass
+
+
+class IonMediaRendition(AbstractIonMediaRendition):
+    pass
 ```
+
+6. Add the models to `settings.py`:
+```python
+WAGTAILDOCS_DOCUMENT_MODEL = 'my_app.IonDocument'
+WAGTAILIMAGES_IMAGE_MODEL = 'my_app.IonImage'
+WAGTAILMEDIA_MEDIA_MODEL = 'my_app.IonMedia'
+
+ION_COLLECTION_MODEL = 'my_app.IonCollection'
+ION_LANGUAGE_MODEL = 'my_app.IonLanguage'
+ION_IMAGE_RENDITION_MODEL = 'my_app.IonRendition'
+ION_MEDIA_RENDITION_MODEL = 'my_app.IonMediaRendition'
+ION_CONTENT_TYPE_DESCRIPTION_MODEL = 'my_app.ContentTypeDescription'
+```
+
+7. (Optional) Create models for custom page types inheriting from `AbstractIonPage` 
+
+8. Create and apply migrations
 
 Make sure you run a celery worker in addition to the django backend for the video conversion to work.
 
@@ -109,26 +161,11 @@ Sane defaults would be something like this:
 }
 ```
 
-### `ION_COLLECTION_MODEL`
-
-Defaults to `wagtail_to_ion.Collection`, but can be overridden to allow for collections to hold
-additional metadata. If you want to use your own collection class, see details below.
-
 ### `ION_READ_ONLY_GROUPS`
 
 Set CMS user groups that may not publish or edit pages but go into the CMS, defaults to empty list
 
 ## 4. Available hooks
-
-### Collection model
-
-The collection model is fully overrideable to allow for additional metadata to be included in
-the collections. Because of this you should always use `get_collection_model()` instead of
-importing `wagtail_to_ion.models.Collection` directly. The module will make sure that the
-Collection class will not exist when using the override to crash any users that do not do that.
-
-To create your own collection class inherit from
-`wagtail_to_ion.models.abstract.AbstractCollection`
 
 ### `page_created` signal
 
