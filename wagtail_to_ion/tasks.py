@@ -52,7 +52,8 @@ def update_thumbnail_rendition(rendition, hash, filename):
 
 @shared_task
 def generate_media_rendition(rendition_id: int):
-    from wagtail_to_ion.models.file_based_models import IonMediaRendition
+    from wagtail_to_ion.models import get_ion_media_rendition_model
+    IonMediaRendition = get_ion_media_rendition_model()
 
     rendition = IonMediaRendition.objects.get(id=rendition_id)
     print("Running {}".format(rendition))

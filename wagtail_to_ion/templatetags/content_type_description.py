@@ -1,12 +1,16 @@
-from wagtail_to_ion.models import ContentTypeDescription
-from django import template
 from collections import namedtuple
+
+from django import template
+
+from wagtail_to_ion.models import get_ion_content_type_description_model
 
 
 register = template.Library()
 
+
 @register.simple_tag
 def content_type_description(app_label, model_name, verbose_name):
+    ContentTypeDescription = get_ion_content_type_description_model()
     content_type_description = namedtuple("content_type_description", ["description", "image_url"])
     image_path = None
 

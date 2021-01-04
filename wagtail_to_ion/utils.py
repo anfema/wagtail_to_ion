@@ -7,8 +7,6 @@ from wagtail.documents.models import get_document_model
 
 from wagtail_to_ion.conf import settings
 
-from rest_framework.serializers import SerializerMetaclass
-
 
 def get_user_collections(user):
     """
@@ -60,8 +58,8 @@ def get_collection_for_page(page):
 
 
 def visible_tree_by_user(root, user):
-    from wagtail_to_ion.models import get_collection_model
-    PageCollection = get_collection_model()
+    from wagtail_to_ion.models import get_ion_collection_model
+    PageCollection = get_ion_collection_model()
     collection = PageCollection.objects.get(live=True, slug=get_collection_for_page(root))
     
     if collection.view_restrictions.exists():
@@ -97,8 +95,8 @@ def visible_tree_by_user(root, user):
 
 
 def visible_collections_by_user(user):
-    from wagtail_to_ion.models import get_collection_model
-    PageCollection = get_collection_model()
+    from wagtail_to_ion.models import get_ion_collection_model
+    PageCollection = get_ion_collection_model()
 
     collections = PageCollection.objects.filter(live=True)
     if not user.is_active:
