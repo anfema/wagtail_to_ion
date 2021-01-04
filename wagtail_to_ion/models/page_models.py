@@ -11,26 +11,17 @@ from django.dispatch import receiver
 from wagtail.core.models import Page, PageRevision
 from wagtail.admin.edit_handlers import FieldPanel, MultiFieldPanel
 from wagtail_to_ion.conf import settings
-from .abstract import AbstractCollection
+
+from .abstract import AbstractIonPage
 
 
-if settings.ION_COLLECTION_MODEL == 'wagtail_to_ion.Collection':
-    class Collection(AbstractCollection):
-        pass
-
-
-class Language(Page):
+class AbstractIonLanguage(AbstractIonPage):
     is_default = models.BooleanField(default=False)
     is_rtl = models.BooleanField(default=False)
     code = models.CharField(max_length=32)
 
-    def __str__(self):
-        return self.title
-
-    def save(self, *args, **kwargs):
-        if self.slug.startswith('to-be-filled'):
-            self.slug = slugify(self.title)
-        super().save(*args, **kwargs)
+    class Meta:
+        abstract = True
 
     # parent_page_types = [settings.ION_COLLECTION_MODEL]
 

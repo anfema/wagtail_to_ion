@@ -1,11 +1,14 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
+from django.conf import settings
 from django.utils.text import slugify
 
-from wagtail.core.models import Page, PageBase
-from wagtail_to_ion.utils import get_model_mixins
+from wagtail.core.models import Page
 
 
-class AbstractCollection(Page):
+class AbstractIonPage(Page):
+
+    class Meta:
+        abstract = True
 
     def __str__(self):
         return self.title
@@ -15,8 +18,11 @@ class AbstractCollection(Page):
             self.slug = slugify(self.title)
         super().save(*args, **kwargs)
 
+
+class AbstractIonCollection(AbstractIonPage):
+
     parent_page_types = ['wagtailcore.Page']
-    subpage_types = ['wagtail_to_ion.Language']
+    subpage_types = [settings.ION_LANGUAGE_MODEL]
 
     class Meta:
         abstract = True

@@ -1,16 +1,18 @@
-from django.db import models
-from django.utils.text import slugify
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
 
 
-class ContentTypeDescription(models.Model):
+class AbstractContentTypeDescription(models.Model):
     """
     Maps the django.contrib.contenttypes to human-readable strings
     """
 
-    description = models.TextField(blank=False, null=False)
-    content_type = models.OneToOneField(ContentType, on_delete=models.PROTECT, blank=False, null=False)
-    example_image = models.ImageField(blank=True, null=True)
+    description = models.TextField()
+    content_type = models.OneToOneField(ContentType, on_delete=models.PROTECT)
+    example_image = models.ImageField(blank=True)
+
+    class Meta:
+        abstract = True
 
     def __str__(self):
         return self.description

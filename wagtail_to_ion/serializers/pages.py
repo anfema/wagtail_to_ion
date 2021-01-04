@@ -6,7 +6,6 @@ from datetime import datetime, date
 
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
-from django.db import models
 
 from bs4 import BeautifulSoup
 from rest_framework import serializers
@@ -16,6 +15,7 @@ from wagtail.core.models import Page, PageViewRestriction
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.utils import isoDate, get_collection_for_page
+from wagtail_to_ion.models.file_based_models import AbstractIonImage, AbstractIonDocument, AbstractIonMedia
 from .base import DataObject
 
 
@@ -77,7 +77,7 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
         if not content_data:
             # Do not include this outlet in the json if the field is an empty string.
             content = None
-    elif content_data.__class__.__name__ == 'IonImage':
+    elif isinstance(content_data, AbstractIonImage):
         archive = content_data.archive_rendition
         content['type'] = 'imagecontent'
         try:
@@ -123,7 +123,7 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
         content['type'] = 'datetimecontent'
         content['datetime'] = isoDate(datetime(content_data.year, month=content_data.month, day=content_data.day))
         content['outlet'] = fieldname
-    elif content_data.__class__.__name__ == 'IonDocument':
+    elif isinstance(content_data, AbstractIonDocument):
         content['type'] = 'filecontent'
         content['mime_type'] = content_data.mime_type
         content['name'] = content_data.title
@@ -142,7 +142,7 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
         content['type'] = 'flagcontent'
         content['is_enabled'] = content_data
         content['outlet'] = fieldname
-    elif content_data.__class__.__name__ == 'IonMedia':
+    elif isinstance(content_data, AbstractIonMedia):
         media_container = {}
         media_container['variation'] = 'default'
         media_container['is_searchable'] = False

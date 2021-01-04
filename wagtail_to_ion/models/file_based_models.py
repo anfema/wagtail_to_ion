@@ -7,20 +7,20 @@ from django.db.utils import cached_property
 from django.utils.translation import ugettext_lazy as _
 
 from magic import from_buffer as magic_from_buffer
-from wagtail.documents.blocks import *
 from wagtail.documents.models import AbstractDocument
 from wagtail.images.models import AbstractImage, AbstractRendition, SourceImageIOError
 from wagtailmedia.blocks import AbstractMediaChooserBlock
 from wagtailmedia.models import AbstractMedia
 
 from wagtail_to_ion.conf import settings
+from wagtail_to_ion.models import get_ion_media_rendition_model
 from wagtail_to_ion.tasks import generate_media_rendition
 
 
 BUFFER_SIZE = 64 * 1024
 
 
-class IonDocument(AbstractDocument):
+class AbstractIonDocument(AbstractDocument):
     checksum = models.CharField(max_length=255)
     mime_type = models.CharField(max_length=128)
     include_in_archive = models.BooleanField(default=True)
@@ -32,6 +32,9 @@ class IonDocument(AbstractDocument):
         'tags',
         'include_in_archive',
     )
+
+    class Meta:
+        abstract = True
 
     def save(self, *args, **kwargs):
         try:
@@ -50,7 +53,7 @@ class IonDocument(AbstractDocument):
         os.chmod(self.file.path, 0o644)
 
 
-class IonImage(AbstractImage):
+class AbstractIonImage(AbstractImage):
     checksum = models.CharField(max_length=255)
     mime_type = models.CharField(max_length=128)
     include_in_archive = models.BooleanField(default=True)
@@ -66,6 +69,9 @@ class IonImage(AbstractImage):
         'focal_point_height',
         'include_in_archive',
     )
+
+    class Meta:
+        abstract = True
 
     def save(self, *args, **kwargs):
         try:
@@ -112,16 +118,17 @@ class IonImage(AbstractImage):
         return result
 
 
-class IonRendition(AbstractRendition):
-    image = models.ForeignKey(IonImage, related_name='renditions', on_delete=models.CASCADE)
+class AbstractIonRendition(AbstractRendition):
+    image = models.ForeignKey(settings.WAGTAILIMAGES_IMAGE_MODEL, related_name='renditions', on_delete=models.CASCADE)
 
     class Meta:
+        abstract = True
         unique_together = (
             ('image', 'filter_spec', 'focal_point_key'),
         )
 
 
-class IonMedia(AbstractMedia):
+class AbstractIonMedia(AbstractMedia):
     checksum = models.CharField(max_length=255)
     mime_type = models.CharField(max_length=128)
     thumbnail = models.ImageField(
@@ -154,12 +161,15 @@ class IonMedia(AbstractMedia):
         'tags',
     )
 
+    class Meta:
+        abstract = True
+
     def save(self, *args, **kwargs):
         needs_transcode = False
         needs_thumbnail = False
         try:
-            obj = IonMedia.objects.get(pk=self.pk)
-        except IonMedia.DoesNotExist:
+            obj = self._meta.default_manager.get(pk=self.pk)
+        except self.DoesNotExist:
             needs_transcode = True
             needs_thumbnail = True
         else:
@@ -213,7 +223,7 @@ class IonMedia(AbstractMedia):
             for rendition in self.renditions.all():
                 rendition.delete()
             for key, config in settings.ION_VIDEO_RENDITIONS.items():
-                rendition = IonMediaRendition.objects.create(
+                rendition = get_ion_media_rendition_model().objects.create(
                     name=key,
                     media_item=self
                 )
@@ -242,7 +252,7 @@ class IonMedia(AbstractMedia):
         super().delete(*args, **kwargs)
 
 
-class IonMediaRendition(models.Model):
+class AbstractIonMediaRendition(models.Model):
     name = models.CharField(
         max_length=128,
         choices=zip(
@@ -250,7 +260,11 @@ class IonMediaRendition(models.Model):
             settings.ION_VIDEO_RENDITIONS.keys()
         )
     )
-    media_item = models.ForeignKey(IonMedia, on_delete=models.CASCADE, related_name='renditions')
+    media_item = models.ForeignKey(
+        settings.WAGTAILMEDIA_MEDIA_MODEL,
+        on_delete=models.CASCADE,
+        related_name='renditions',
+    )
     file = models.FileField(upload_to='media_renditions', null=True, blank=True, verbose_name=_('file'))
     thumbnail = models.FileField(upload_to='media_thumbnails', null=True, blank=True, verbose_name=_('thumbnail'))
     width = models.PositiveIntegerField(null=True, blank=True, verbose_name=_('width'))
@@ -261,7 +275,10 @@ class IonMediaRendition(models.Model):
     thumbnail_checksum = models.CharField(max_length=255, default='null:')
 
     class Meta:
-        unique_together = (('name', 'media_item'), )
+        abstract = True
+        unique_together = (
+            ('name', 'media_item'),
+        )
 
     def __str__(self):
         return "IonMediaRendition {} for {}".format(self.name, self.media_item)
