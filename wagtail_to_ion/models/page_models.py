@@ -20,6 +20,8 @@ class AbstractIonLanguage(AbstractIonPage):
     class Meta:
         abstract = True
 
+    ion_api_object_name = 'language'
+
     # parent_page_types = [settings.ION_COLLECTION_MODEL]
 
     content_panels = [

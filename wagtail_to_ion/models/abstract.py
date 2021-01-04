@@ -20,6 +20,7 @@ class AbstractIonPage(Page):
 
 
 class AbstractIonCollection(AbstractIonPage):
+    ion_api_object_name = 'collection'
 
     parent_page_types = ['wagtailcore.Page']
     subpage_types = [settings.ION_LANGUAGE_MODEL]
