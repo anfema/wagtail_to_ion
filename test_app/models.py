@@ -12,35 +12,43 @@ from wagtail_to_ion.models.page_models import AbstractIonLanguage
 
 # wagtail_to_ion models
 class ContentTypeDescription(AbstractContentTypeDescription):
-    pass
+    class Meta(AbstractContentTypeDescription.Meta):
+        db_table = 'wagtail_to_ion_contenttypedescription'
 
 
 class IonCollection(AbstractIonCollection):
-    pass
+    class Meta(AbstractIonCollection.Meta):
+        db_table = 'wagtail_to_ion_collection'
 
 
 class IonLanguage(AbstractIonLanguage):
-    pass
+    class Meta(AbstractIonLanguage.Meta):
+        db_table = 'wagtail_to_ion_language'
 
 
 class IonDocument(AbstractIonDocument):
-    pass
+    class Meta(AbstractIonDocument.Meta):
+        db_table = 'wagtail_to_ion_iondocument'
 
 
 class IonImage(AbstractIonImage):
-    pass
+    class Meta(AbstractIonImage.Meta):
+        db_table = 'wagtail_to_ion_ionimage'
 
 
 class IonRendition(AbstractIonRendition):
-    pass
+    class Meta(AbstractIonRendition.Meta):
+        db_table = 'wagtail_to_ion_ionrendition'
 
 
 class IonMedia(AbstractIonMedia):
-    pass
+    class Meta(AbstractIonMedia.Meta):
+        db_table = 'wagtail_to_ion_ionmedia'
 
 
 class IonMediaRendition(AbstractIonMediaRendition):
-    pass
+    class Meta(AbstractIonMediaRendition.Meta):
+        db_table = 'wagtail_to_ion_ionmediarendition'
 
 
 # project specific models
