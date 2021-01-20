@@ -20,7 +20,7 @@ from wagtailmedia.models import get_media_model
 from wagtail.images.views.multiple import get_image_edit_form
 from wagtail.search.backends import get_search_backends
 from wagtail.documents.forms import get_document_form, get_document_multi_form
-from wagtail.documents.models import get_document_model
+from wagtail.documents import get_document_model
 
 from wagtailmedia.forms import get_media_form
 

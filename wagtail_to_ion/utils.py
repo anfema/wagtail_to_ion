@@ -3,7 +3,7 @@ from django.utils.module_loading import import_string
 
 from wagtail.core.models import Collection, Page, PageViewRestriction
 from wagtail.images import get_image_model
-from wagtail.documents.models import get_document_model
+from wagtail.documents import get_document_model
 
 from wagtail_to_ion.conf import settings
 

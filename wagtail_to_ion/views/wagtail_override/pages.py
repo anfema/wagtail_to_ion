@@ -1,5 +1,4 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
-from django.contrib.auth.models import Group
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import ugettext as _
 from django.urls import reverse
@@ -16,8 +15,8 @@ from wagtail.admin.mail import send_notification
 from wagtail.admin.widgets import Button, ButtonWithDropdownFromHook, PageListingButton
 from wagtail.admin.auth import PermissionPolicyChecker
 from wagtail.images.permissions import permission_policy
-from wagtail.core.models import Page, PageRevision, GroupPagePermission
-from wagtail.admin.views.pages import get_valid_next_url_from_request
+from wagtail.core.models import Page, PageRevision
+from wagtail.admin.views.pages.utils import get_valid_next_url_from_request
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.signals import page_created
