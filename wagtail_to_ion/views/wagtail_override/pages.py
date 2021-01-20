@@ -1,5 +1,6 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect
+from django.template.response import TemplateResponse
 from django.utils.translation import ugettext as _
 from django.urls import reverse
 from django.contrib.contenttypes.models import ContentType
@@ -237,7 +238,7 @@ def ion_create(request, content_type_app_name, content_type_model_name, parent_p
         edit_handler = edit_handler.bind_to(instance=page, request=request, form=form)
         has_unsaved_changes = False
 
-    return render(request, 'wagtailadmin/pages/create.html', {
+    return TemplateResponse(request, 'wagtailadmin/pages/create.html', {
         'content_type': content_type,
         'page_class': page_class,
         'parent_page': parent_page,
@@ -484,7 +485,7 @@ def ion_edit(request, page_id):
 
         messages.warning(request, _("This page is currently awaiting moderation"), buttons=buttons)
 
-    return render(request, 'wagtailadmin/pages/edit.html', {
+    return TemplateResponse(request, 'wagtailadmin/pages/edit.html', {
         'page': page,
         'content_type': content_type,
         'edit_handler': edit_handler,
@@ -530,7 +531,7 @@ def ion_unpublish(request, page_id):
             return redirect(next_url)
         return redirect('wagtailadmin_explore', page.get_parent().id)
 
-    return render(request, 'wagtailadmin/pages/confirm_unpublish.html', {
+    return TemplateResponse(request, 'wagtailadmin/pages/confirm_unpublish.html', {
         'page': page,
         'next': next_url,
     })
@@ -561,10 +562,9 @@ def ion_publish_with_children(request, page_id):
             return redirect(next_url)
         return redirect('wagtailadmin_explore', page.get_parent().id)
 
-    return render(request, 'wagtailadmin/pages/publish_with_children.html', {
+    return TemplateResponse(request, 'wagtailadmin/pages/publish_with_children.html', {
         'page': page,
         'next': next_url,
         'unpublished_descendants': unpublished_descendant_pages,
         'unpublished_descendant_count': page.get_descendants().not_live().count(),
     })
-

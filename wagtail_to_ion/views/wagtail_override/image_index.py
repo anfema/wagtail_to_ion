@@ -1,7 +1,7 @@
 from wagtail_to_ion.utils import get_user_images
 
-from django.shortcuts import render
 from django.core.paginator import Paginator
+from django.template.response import TemplateResponse
 from django.views.decorators.vary import vary_on_headers
 from django.utils.translation import ugettext as _
 
@@ -13,6 +13,7 @@ from wagtail.admin.models import popular_tags_for_model
 from wagtail.images.permissions import permission_policy
 
 permission_checker = PermissionPolicyChecker(permission_policy)
+
 
 @permission_checker.require_any('add', 'change', 'delete')
 @vary_on_headers('X-Requested-With')
@@ -60,13 +61,13 @@ def image_index(request):
 
     # Create response
     if request.is_ajax():
-        return render(request, 'wagtailimages/images/results.html', {
+        return TemplateResponse(request, 'wagtailimages/images/results.html', {
             'images': images,
             'query_string': query_string,
             'is_searching': bool(query_string),
         })
     else:
-        return render(request, 'wagtailimages/images/index.html', {
+        return TemplateResponse(request, 'wagtailimages/images/index.html', {
             'images': images,
             'query_string': query_string,
             'is_searching': bool(query_string),

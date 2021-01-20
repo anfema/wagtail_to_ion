@@ -1,5 +1,6 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect
+from django.template.response import TemplateResponse
 from django.utils.translation import ugettext as _
 from django.db.models import ProtectedError
 from django.http import HttpResponseBadRequest, JsonResponse
@@ -10,8 +11,7 @@ from django.urls import reverse
 
 from wagtail.core.models import Collection
 from wagtail.admin import messages
-from wagtail.admin.auth import (
-    PermissionPolicyChecker, permission_denied)
+from wagtail.admin.auth import PermissionPolicyChecker, permission_denied
 from wagtail.images import get_image_model
 from wagtail.images.forms import get_image_form
 from wagtail.images.fields import ALLOWED_EXTENSIONS
@@ -88,7 +88,7 @@ def add_image(request):
     else:
         form = ImageForm(user=request.user)
 
-    return render(request, 'wagtailimages/multiple/add.html', {
+    return TemplateResponse(request, 'wagtailimages/multiple/add.html', {
         'max_filesize': form.fields['file'].max_upload_size,
         'help_text': form.fields['file'].help_text,
         'allowed_extensions': ALLOWED_EXTENSIONS,
@@ -114,7 +114,7 @@ def delete_image(request, image_id):
             messages.success(request, _("Image '{0}' deleted.").format(image.title))
             return redirect('wagtailimages:index')
 
-    return render(request, "wagtailimages/images/confirm_delete.html", {
+    return TemplateResponse(request, "wagtailimages/images/confirm_delete.html", {
         'image': image,
     })
 
@@ -144,7 +144,7 @@ def add_media(request, media_type):
         media = Media(uploaded_by_user=request.user, type=media_type)
         form = MediaForm(user=request.user, instance=media)
 
-    return render(request, "wagtailmedia/media/add.html", {
+    return TemplateResponse(request, "wagtailmedia/media/add.html", {
         'form': form,
         'media_type': media_type,
     })
@@ -167,7 +167,7 @@ def delete_media(request, media_id):
             messages.success(request, _("Media file '{0}' deleted.").format(media.title))
             return redirect('wagtailmedia:index')
 
-    return render(request, "wagtailmedia/media/confirm_delete.html", {
+    return TemplateResponse(request, "wagtailmedia/media/confirm_delete.html", {
         'media': media,
     })
 
@@ -236,7 +236,7 @@ def add_document(request):
     else:
         form = DocumentForm(user=request.user)
 
-    return render(request, 'wagtaildocs/multiple/add.html', {
+    return TemplateResponse(request, 'wagtaildocs/multiple/add.html', {
         'help_text': form.fields['file'].help_text,
         'collections': collections_to_choose,
     })

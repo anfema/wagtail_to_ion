@@ -1,7 +1,7 @@
 from wagtail_to_ion.utils import get_user_documents
 
 from django.core.paginator import Paginator
-from django.shortcuts import render
+from django.template.response import TemplateResponse
 from django.utils.translation import ugettext as _
 from django.views.decorators.vary import vary_on_headers
 
@@ -65,14 +65,14 @@ def document_index(request):
 
     # Create response
     if request.is_ajax():
-        return render(request, 'wagtaildocs/documents/results.html', {
+        return TemplateResponse(request, 'wagtaildocs/documents/results.html', {
             'ordering': ordering,
             'documents': documents,
             'query_string': query_string,
             'is_searching': bool(query_string),
         })
     else:
-        return render(request, 'wagtaildocs/documents/index.html', {
+        return TemplateResponse(request, 'wagtaildocs/documents/index.html', {
             'ordering': ordering,
             'documents': documents,
             'query_string': query_string,
