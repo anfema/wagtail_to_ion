@@ -10,7 +10,7 @@ from wagtail.admin import messages
 from wagtail.admin.widgets import Button
 from wagtail.admin.auth import PermissionPolicyChecker
 from wagtail.images.permissions import permission_policy
-from wagtail.core.models import Page, PageRevision
+from wagtail.core.models import Page
 from wagtail.admin.views.pages.utils import get_valid_next_url_from_request
 
 
@@ -22,8 +22,8 @@ permission_checker = PermissionPolicyChecker(permission_policy)
 def page_listing_more_buttons(page, page_perms, is_parent=False):
     if page_perms.can_publish():
         yield Button(
-            'Publish',
-            '/cms/pages/{page_id}/publish-with-children/'.format(page_id=page.id),
+            'Publish with children',
+            reverse('publish-with-children', args=(page.id,)),
             priority=60
         )
 
@@ -34,7 +34,7 @@ def publish_parent_tree(page):
     '''
     if page.get_parent().title != 'Root':
         if not page.get_parent().live and page.get_parent().has_unpublished_changes:
-            revision = PageRevision.objects.filter(page=page.get_parent()).latest('created_at')
+            revision = page.get_parent().get_latest_revision()
             revision.publish()
             return publish_parent_tree(page.get_parent())
 
@@ -57,20 +57,30 @@ def ion_unpublish(request, page_id):
     # TODO permission handling postponed
     # user_perms = UserPagePermissionsProxy(request.user)
     # if not user_perms.for_page(page).can_unpublish():
-    # 	raise PermissionDenied
+    #     raise PermissionDenied
 
     next_url = get_valid_next_url_from_request(request)
 
     if request.method == 'POST':
         include_descendants = True
 
-        page.unpublish()
+        for fn in hooks.get_hooks('before_unpublish_page'):
+            result = fn(request, page)
+            if hasattr(result, 'status_code'):
+                return result
+
+        page.unpublish(user=request.user)
 
         if include_descendants:
             live_descendant_pages = page.get_descendants().live().specific()
             for live_descendant_page in live_descendant_pages:
                 # if user_perms.for_page(live_descendant_page).can_unpublish():
                 live_descendant_page.unpublish()
+
+        for fn in hooks.get_hooks('after_unpublish_page'):
+            result = fn(request, page)
+            if hasattr(result, 'status_code'):
+                return result
 
         messages.success(request, _("Page '{0}' unpublished.").format(page.get_admin_display_title()), buttons=[
             messages.button(reverse('wagtailadmin_pages:edit', args=(page.id,)), _('Edit'))
@@ -83,6 +93,7 @@ def ion_unpublish(request, page_id):
     return TemplateResponse(request, 'wagtailadmin/pages/confirm_unpublish.html', {
         'page': page,
         'next': next_url,
+        # 'live_descendant_count': page.get_descendants().live().count(),
     })
 
 
@@ -93,7 +104,7 @@ def ion_publish_with_children(request, page_id):
     if not page_perms.can_publish():
         raise PermissionDenied
 
-    revision = PageRevision.objects.filter(page=page).latest('created_at')
+    revision = page.get_latest_revision()
     unpublished_descendant_pages = page.get_descendants().filter(live=False).specific()
 
     next_url = get_valid_next_url_from_request(request)
@@ -102,7 +113,7 @@ def ion_publish_with_children(request, page_id):
         revision.publish()
 
         for unpublished_descendant_page in unpublished_descendant_pages:
-            unpublished_descendant_revision = PageRevision.objects.filter(page=unpublished_descendant_page).latest('created_at')
+            unpublished_descendant_revision = unpublished_descendant_page.get_latest_revision()
             unpublished_descendant_revision.publish()
 
         messages.success(request, _("Publishing successful."))
