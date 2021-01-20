@@ -36,7 +36,7 @@ def add_image(request):
 
     collections = permission_policy.collections_user_has_permission_for(request.user, 'add')
     if len(collections) > 1:
-        collections_to_choose = Collection.order_for_display(collections)
+        collections_to_choose = collections
     else:
         # no need to show a collections chooser
         collections_to_choose = None
@@ -181,7 +181,7 @@ def add_document(request):
 
     collections = permission_policy.collections_user_has_permission_for(request.user, 'add')
     if len(collections) > 1:
-        collections_to_choose = Collection.order_for_display(collections)
+        collections_to_choose = collections
     else:
         # no need to show a collections chooser
         collections_to_choose = None
