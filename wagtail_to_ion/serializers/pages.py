@@ -286,9 +286,8 @@ class DynamicPageSerializer(serializers.ModelSerializer):
           specific object to generate the value for the meta struct
         """
         result = {}
-        ct = ContentType.objects.get_for_id(obj.specific.content_type_id)
-        if hasattr(ct.model_class(), 'metadata'):
-            for item in ct.model_class().metadata():
+        if hasattr(obj.specific_class, 'ion_metadata'):
+            for item in obj.specific_class.ion_metadata():
                 if isinstance(item, tuple) or isinstance(item, list):
                     field_name = item[0]
                     generator = item[1]
