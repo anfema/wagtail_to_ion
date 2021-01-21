@@ -1,5 +1,5 @@
 psycopg2
-wagtail<2.10
+wagtail
 wagtailmedia
 python-magic
 celery[redis]
