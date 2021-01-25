@@ -3,7 +3,7 @@ from django.utils.module_loading import import_string
 
 from wagtail.core.models import Collection, Page, PageViewRestriction
 from wagtail.images import get_image_model
-from wagtail.documents.models import get_document_model
+from wagtail.documents import get_document_model
 
 from wagtail_to_ion.conf import settings
 
@@ -12,6 +12,8 @@ def get_user_collections(user):
     """
     Return collections for the user
     """
+    # TODO: doesn't support permission inheritance of nested collections
+    # TODO: remove (should be obsolete once 'choose' permission is available; permission handling is project specific)
     collections = Collection.objects.all()
     if not user.is_superuser:
         collections = collections.filter(group_permissions__group__user=user).distinct()
@@ -57,6 +59,7 @@ def get_collection_for_page(page):
         return get_collection_for_page(page.get_parent())
 
 
+# TODO: might be obsolete once https://github.com/wagtail/wagtail/pull/6300 has been merged
 def visible_tree_by_user(root, user):
     from wagtail_to_ion.models import get_ion_collection_model
     PageCollection = get_ion_collection_model()
@@ -120,6 +123,7 @@ def isoDate(d):
         return 'None'
 
 
+# TODO: remove? unused...
 def get_model_mixins(model_name):
     mixin_paths = settings.WAGTAIL_TO_ION_MODEL_MIXINS.get(model_name, ())
     mixins = list()

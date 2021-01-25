@@ -130,7 +130,8 @@ CELERY_BROKER_URL = 'redis://localhost:6379/0'
 
 # wagtail
 WAGTAIL_SITE_NAME = 'Wagtail to ION test project'
-
+WAGTAIL_I18N_ENABLED = False
+WAGTAIL_MODERATION_ENABLED = False
 
 # wagtailmedia
 WAGTAILDOCS_DOCUMENT_MODEL = 'test_app.IonDocument'
