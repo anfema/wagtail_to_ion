@@ -5,4 +5,7 @@ include LICENSE.md
 recursive-include wagtail_to_ion/templates *
 recursive-include wagtail_to_ion/static *
 
+recursive-exclude test_app *
+recursive-exclude test_proj *
+
 global-exclude *.py[cod]

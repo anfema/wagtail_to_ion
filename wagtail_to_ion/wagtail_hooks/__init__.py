@@ -1,3 +1,3 @@
-from .show_only_user_images import show_only_user_images, modify_images_menu_item
-from .show_only_user_documents import show_only_user_documents, modify_documents_menu_item
+from .show_only_user_images import show_only_user_images
+from .show_only_user_documents import show_only_user_documents
 from .dual_range_slider import global_admin_css, global_admin_js

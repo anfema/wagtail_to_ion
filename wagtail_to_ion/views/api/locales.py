@@ -4,9 +4,11 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from wagtail_to_ion.serializers import LocaleSerializer
-from wagtail_to_ion.models import get_collection_model, Language
+from wagtail_to_ion.models import get_ion_collection_model, get_ion_language_model
 
-Collection = get_collection_model()
+
+Collection = get_ion_collection_model()
+Language = get_ion_language_model()
 
 
 class LocaleListView(generics.ListAPIView):

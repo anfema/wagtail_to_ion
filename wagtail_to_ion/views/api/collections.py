@@ -6,19 +6,18 @@ from email.utils import parsedate_to_datetime
 from django.http import Http404, HttpResponse
 from django.core.exceptions import ObjectDoesNotExist
 
-from rest_framework.exceptions import PermissionDenied
 from rest_framework import generics
 
-from wagtail.core.models import Page, PageViewRestriction
+from wagtail.core.models import Page
 
 from wagtail_to_ion.conf import settings
-from wagtail_to_ion.models import get_collection_model
+from wagtail_to_ion.models import get_ion_collection_model
 from wagtail_to_ion.serializers import CollectionSerializer, CollectionDetailSerializer, DynamicPageDetailSerializer, make_tar
 from wagtail_to_ion.views.mixins import ListMixin, TarResponseMixin
 from wagtail_to_ion.utils import visible_tree_by_user, visible_collections_by_user
 
 
-Collection = get_collection_model()
+Collection = get_ion_collection_model()
 
 
 class CollectionListView(ListMixin):

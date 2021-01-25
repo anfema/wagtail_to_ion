@@ -5,12 +5,12 @@ from wagtail.core.models import Page
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.serializers import DynamicPageDetailSerializer, make_page_tar
-from wagtail_to_ion.models import get_collection_model
+from wagtail_to_ion.models import get_ion_collection_model
 from wagtail_to_ion.views.mixins import TarResponseMixin, ListMixin
 from wagtail_to_ion.utils import visible_tree_by_user
 
 
-Collection = get_collection_model()
+Collection = get_ion_collection_model()
 
 
 class DynamicPageDetailView(generics.RetrieveAPIView):
