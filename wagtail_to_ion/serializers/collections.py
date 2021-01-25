@@ -39,7 +39,7 @@ class CollectionSerializer(DataObject):
             'locale': locale,
             'collection': obj.slug,
         })
-        url = self.context['request'].build_absolute_uri(url) + '?variation={}'.format(self.context['request'].GET.get('variation', 'default'))
+        url = self.context['request'].build_absolute_uri(url)
         return url
 
     class Meta:
@@ -50,11 +50,10 @@ class CollectionSerializer(DataObject):
 class CollectionDetailSerializer(CollectionSerializer):
     pages = serializers.SerializerMethodField()
 
-    content_serializer_class = DynamicPageSerializer
-
     def get_pages(self, obj):
-        locale = self.context['request'].resolver_match.kwargs['locale']
-        user = self.context['request'].user
+        request = self.context['request']
+        locale = request.resolver_match.kwargs['locale']
+        user = request.user
         try:
             localized_tree = obj.get_children().filter(live=True)
             # find locale
@@ -69,13 +68,18 @@ class CollectionDetailSerializer(CollectionSerializer):
             if locale_item is None:
                 locale_item = default_locale
             if settings.GET_PAGES_BY_USER:
-                pages = visible_tree_by_user(locale_item, user)
+                return visible_tree_by_user(locale_item, user)
             else:
                 pages = locale_item.get_descendants().filter(live=True)
         except ObjectDoesNotExist:
             pages = {}
 
-        serializer = self.content_serializer_class(instance=pages, many=True, user=user)
+        serializer = DynamicPageSerializer(
+            instance=pages,
+            many=True,
+            user=user,
+            context={'request': request}
+        )
         return serializer.data
 
     class Meta(CollectionSerializer.Meta):

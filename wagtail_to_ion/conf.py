@@ -24,9 +24,3 @@ settings.WAGTAIL_TO_ION_MODEL_MIXINS = getattr(
     'WAGTAIL_TO_ION_MODEL_MIXINS',
     {}
 )
-
-settings.ION_READ_ONLY_GROUPS = getattr(
-    settings,
-    'ION_READ_ONLY_GROUPS',
-    []
-)

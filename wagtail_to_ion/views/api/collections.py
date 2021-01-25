@@ -1,23 +1,25 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
 from datetime import datetime
 
-from email.utils import parsedate_to_datetime
-
 from django.http import Http404, HttpResponse
 from django.core.exceptions import ObjectDoesNotExist
 
+from email.utils import parsedate_to_datetime
+
+from django.http import Http404
+from rest_framework.exceptions import PermissionDenied
 from rest_framework import generics
 
 from wagtail.core.models import Page
 
 from wagtail_to_ion.conf import settings
-from wagtail_to_ion.models import get_ion_collection_model
-from wagtail_to_ion.serializers import CollectionSerializer, CollectionDetailSerializer, DynamicPageDetailSerializer, make_tar
+from wagtail_to_ion.models import get_collection_model
+from wagtail_to_ion.serializers import CollectionSerializer, CollectionDetailSerializer, DynamicPageDetailSerializer ,make_tar
 from wagtail_to_ion.views.mixins import ListMixin, TarResponseMixin
-from wagtail_to_ion.utils import visible_tree_by_user, visible_collections_by_user
+from wagtail_to_ion.utils import visible_tree_by_user
 
 
-Collection = get_ion_collection_model()
+Collection = get_collection_model()
 
 
 class CollectionListView(ListMixin):
@@ -25,10 +27,10 @@ class CollectionListView(ListMixin):
 
     def get_queryset(self):
         user = self.request.user
-        if settings.GET_PAGES_BY_USER:
-            return visible_collections_by_user(user)
-        else:
-            return Collection.objects.filter(live=True)
+        if not user.is_active:
+            raise PermissionDenied()
+
+        return Collection.objects.filter(live=True)
 
 
 class CollectionDetailView(generics.RetrieveAPIView):
@@ -37,10 +39,16 @@ class CollectionDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if settings.GET_PAGES_BY_USER:
-            return visible_collections_by_user(user)
-        else:
-            return Collection.objects.filter(live=True)
+        if not user.is_active:
+            raise PermissionDenied()
+
+        return Collection.objects.filter(live=True)
+
+    def get_object(self):
+        collection_page = Collection.objects.filter(live=True).first()
+        self.kwargs[self.lookup_field] = collection_page.slug
+
+        return super().get_object()
 
 
 class CollectionArchiveView(TarResponseMixin, ListMixin):
@@ -86,11 +94,12 @@ class CollectionArchiveView(TarResponseMixin, ListMixin):
         last_updated = None
         if 'lastUpdated' in request.GET:
             last_updated = datetime.strptime(request.GET['lastUpdated'], '%Y-%m-%dT%H:%M:%SZ')
-            
+
         if 'HTTP_IF_MODIFIED_SINCE' in request.META:
             last_updated = parsedate_to_datetime(request.META['HTTP_IF_MODIFIED_SINCE'])
 
         if last_updated:
+            last_updated = datetime.strptime(request.GET['lastUpdated'], '%Y-%m-%dT%H:%M:%SZ')
             updated_pages = Page.objects.filter(
                 last_published_at__gt=last_updated,
                 id__in=pages.values_list("id", flat=True)

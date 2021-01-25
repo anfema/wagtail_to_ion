@@ -24,7 +24,7 @@ class TarWriter:
         self.write_header(archive_path, 0, item_type=b'5', date=date)
 
     def data(self):
-        for _ in range(0, 1024):
+        for i in range(0, 1024):
             self.binary_data += b"\0"
         return bytes(self.binary_data)
 
@@ -106,5 +106,5 @@ class TarWriter:
     def write_padded(self, content):
         self.binary_data.extend(content)
         if not len(content) % 512 == 0:
-            for _ in range(len(content) % 512, 512):
+            for i in range(len(content) % 512, 512):
                 self.binary_data += b"\0"

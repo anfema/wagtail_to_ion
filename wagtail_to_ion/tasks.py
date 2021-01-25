@@ -10,6 +10,16 @@ from celery import shared_task
 
 BUFFER_SIZE = 64 * 1024
 
+# Use ffmpeg from user's bin if it exists, global ffmpeg otherwise
+ffmpeg = os.path.expanduser('~/bin/ffmpeg')
+if not os.path.exists(ffmpeg):
+    ffmpeg = 'ffmpeg'
+
+ffprobe = os.path.expanduser('~/bin/ffprobe')
+if not os.path.exists(ffmpeg):
+    ffprobe = 'ffprobe'
+
+
 def new_empty_thumbnail(suffix):
     data = bytes.fromhex('''
         ffd8ffdb0043000302020202020302020203030303040604040404040806
@@ -50,6 +60,109 @@ def update_thumbnail_rendition(rendition, hash, filename):
     rendition.save()
 
 
+def generate_rendition_thumbnail(rendition, rendition_file=None, thumbnail_file=None):
+    if thumbnail_file is None:
+        basename = os.path.basename(rendition.media_item.file.path)
+        filename, _ = os.path.splitext(basename)
+        thumbnail_file = os.path.join(settings.MEDIA_ROOT, 'media_thumbnails', '{}-{}.jpg'.format(filename, rendition.name))
+
+    if rendition_file is None:
+        rendition_file = rendition.file.path
+
+    # generate rendition thumbnails
+    try:
+        rendition_head = [
+            ffmpeg,
+            '-i', rendition_file
+        ]
+        thumbnail = [
+            '-y',
+            '-vframes', '1',
+            '-ss', '00:00:02.000',
+            '-an',
+            thumbnail_file
+        ]
+        subprocess.run(
+            rendition_head + thumbnail,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True
+        )
+
+        h = hashlib.new('sha256')
+        with open(thumbnail_file, 'rb') as fp:
+            buffer = fp.read(BUFFER_SIZE)
+            while len(buffer) > 0:
+                h.update(buffer)
+                buffer = fp.read(BUFFER_SIZE)
+
+        update_thumbnail_rendition(rendition, h, thumbnail_file)
+    except Exception as e:
+        rendition.transcode_errors = 'ERROR generating rendition thumbnail:\n' + ' '.join(rendition_head + thumbnail) + '\n'
+        if isinstance(e, subprocess.CalledProcessError):
+            rendition.transcode_errors += e.stderr.decode('utf-8')
+        else:
+            rendition.transcode_errors += str(e)
+        try:
+            update_thumbnail_rendition(rendition, None, None)
+        except Exception as e:
+            rendition.transcode_errors += '\nERROR saving rendition thumbnail:\n' + str(e)
+        rendition.save()
+        return False  # Thumbnail generation failed
+
+    return True
+
+
+def generate_media_thumbnail(rendition, thumbnail_file=None):
+    if thumbnail_file is None:
+        basename = os.path.basename(rendition.media_item.file.path)
+        filename, _ = os.path.splitext(basename)
+        thumbnail_file = os.path.join(settings.MEDIA_ROOT, 'media_thumbnails', '{}-thumb.jpg'.format(filename))
+
+    # generate media thumbnail
+    try:
+        head = [
+            ffmpeg,
+            '-i', rendition.media_item.file.path
+        ]
+        thumbnail = [
+            '-y',
+            '-vframes', '1',
+            '-ss', '00:00:02.000',
+            '-an',
+            thumbnail_file
+        ]
+        subprocess.run(
+            head + thumbnail,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True
+        )
+
+        h = hashlib.new('sha256')
+        with open(thumbnail_file, 'rb') as fp:
+            buffer = fp.read(BUFFER_SIZE)
+            while len(buffer) > 0:
+                h.update(buffer)
+                buffer = fp.read(BUFFER_SIZE)
+
+        update_thumbnail_original(rendition.media_item, h, thumbnail_file)
+    except Exception as e:
+        rendition.transcode_errors = 'ERROR generating media thumbnail:\n' + ' '.join(head + thumbnail) + '\n'
+        if isinstance(e, subprocess.CalledProcessError):
+            rendition.transcode_errors += e.stderr.decode('utf-8')
+        else:
+            rendition.transcode_errors += str(e)
+        try:
+            update_thumbnail_original(rendition.media_item, None, None)
+            update_thumbnail_rendition(rendition, None, None)
+        except Exception as e:
+            rendition.transcode_errors += '\nERROR saving thumbnails:\n' + str(e)
+        rendition.save()
+        return False  # Thumbnail failed
+    return True
+
+
 @shared_task
 def generate_media_rendition(rendition_id: int):
     from wagtail_to_ion.models import get_ion_media_rendition_model
@@ -57,15 +170,6 @@ def generate_media_rendition(rendition_id: int):
 
     rendition = IonMediaRendition.objects.get(id=rendition_id)
     print("Running {}".format(rendition))
-
-    # Use ffmpeg from user's bin if it exists, global ffmpeg otherwise
-    ffmpeg = os.path.expanduser('~/bin/ffmpeg')
-    if not os.path.exists(ffmpeg):
-        ffmpeg = 'ffmpeg'
-
-    ffprobe = os.path.expanduser('~/bin/ffprobe')
-    if not os.path.exists(ffmpeg):
-        ffprobe = 'ffprobe'
 
     basename = os.path.basename(rendition.media_item.file.path)
     filename, _ = os.path.splitext(basename)
@@ -157,43 +261,9 @@ def generate_media_rendition(rendition_id: int):
         rendition.save()
         return  # Thumbnail failed
 
-
-    # generate media thumbnail
-    try:
-        thumbnail = [
-            '-y',
-            '-vframes', '1',
-            '-an',
-            orig_thumbnail_file
-        ]
-        subprocess.run(
-            head + thumbnail,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True
-        )
-
-        h = hashlib.new('sha256')
-        with open(orig_thumbnail_file, 'rb') as fp:
-            buffer = fp.read(BUFFER_SIZE)
-            while len(buffer) > 0:
-                h.update(buffer)
-                buffer = fp.read(BUFFER_SIZE)
-
-        update_thumbnail_original(rendition.media_item, h, orig_thumbnail_file)
-    except Exception as e:
-        rendition.transcode_errors = 'ERROR generating media thumbnail:\n' + ' '.join(head + thumbnail) + '\n'
-        if isinstance(e, subprocess.CalledProcessError):
-            rendition.transcode_errors += e.stderr.decode('utf-8')
-        else:
-            rendition.transcode_errors += str(e)
-        try:
-            update_thumbnail_original(rendition.media_item, None, None)
-            update_thumbnail_rendition(rendition, None, None)
-        except Exception as e:
-            rendition.transcode_errors += '\nERROR saving thumbnails:\n' + str(e)
-        rendition.save()
-        return  # Thumbnail failed
+    result = generate_media_thumbnail(rendition, thumbnail_file=orig_thumbnail_file)
+    if result is False:
+        return  # Thumbnail generation failed
 
     # transcode
     try:
@@ -227,45 +297,9 @@ def generate_media_rendition(rendition_id: int):
         rendition.save()
         return  # Transcode failed
 
-    # generate rendition thumbnails
-    try:
-        rendition_head = [
-            ffmpeg,
-            '-i', outfile
-        ]
-        thumbnail = [
-            '-y',
-            '-vframes', '1',
-            '-an',
-            thumbnail_file
-        ]
-        subprocess.run(
-            rendition_head + thumbnail,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True
-        )
-
-        h = hashlib.new('sha256')
-        with open(thumbnail_file, 'rb') as fp:
-            buffer = fp.read(BUFFER_SIZE)
-            while len(buffer) > 0:
-                h.update(buffer)
-                buffer = fp.read(BUFFER_SIZE)
-
-        update_thumbnail_rendition(rendition, h, thumbnail_file)
-    except Exception as e:
-        rendition.transcode_errors = 'ERROR generating rendition thumbnail:\n' + ' '.join(rendition_head + thumbnail) + '\n'
-        if isinstance(e, subprocess.CalledProcessError):
-            rendition.transcode_errors += e.stderr.decode('utf-8')
-        else:
-            rendition.transcode_errors += str(e)
-        try:
-            update_thumbnail_rendition(rendition, None, None)
-        except Exception as e:
-            rendition.transcode_errors += '\nERROR saving rendition thumbnail:\n' + str(e)
-        rendition.save()
-        return  # Thumbnail generation failed
+    result = generate_rendition_thumbnail(rendition, rendition_file=outfile, thumbnail_file=thumbnail_file)
+    if result is False:
+        return  # Error while generating thumbnail
 
     # update rendition media info
     try:

@@ -8,6 +8,7 @@ from django.dispatch import receiver
 
 from wagtail.core.models import Page, PageRevision
 from wagtail.admin.edit_handlers import FieldPanel, MultiFieldPanel
+from wagtail_to_ion.conf import settings
 
 from .abstract import AbstractIonPage
 
@@ -20,9 +21,12 @@ class AbstractIonLanguage(AbstractIonPage):
     class Meta:
         abstract = True
 
+    def __str__(self):
+        return self.title
+
     ion_api_object_name = 'language'
 
-    # parent_page_types = [settings.ION_COLLECTION_MODEL]
+    parent_page_types = [settings.ION_COLLECTION_MODEL]
 
     content_panels = [
         MultiFieldPanel([

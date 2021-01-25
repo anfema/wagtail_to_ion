@@ -1,36 +1,30 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
 import json
 import os
-
-from django.urls import reverse
 from rest_framework.renderers import JSONRenderer
 
 from wagtail_to_ion.tar import TarWriter
 from wagtail_to_ion.conf import settings
-from wagtail_to_ion.serializers import DynamicPageDetailSerializer
-from wagtail_to_ion.utils import get_collection_for_page
+from wagtail_to_ion.serializers import get_collection, DynamicPageDetailSerializer
+from wagtail_to_ion.serializers.pages import get_wagtail_panels_and_extra_fields
 
 
-def build_url(request, locale_code, page, variation='default'):
-    url = reverse('v1:page-detail', kwargs={
-        'locale': locale_code,
-        'collection': get_collection_for_page(page),
-        'slug': page.slug,
-    })
-    return request.build_absolute_uri(url) + "?variation={}".format(variation)
+# TODO: refactor, where are all those functions called, hide internal functions, split into generic part and specific
+# one for pages and translations?
+def build_url(request, locale_code, page):
+    url = '/'.join(['/v1', locale_code, get_collection(page), page.slug]) + "?variation=default"
+    return request.build_absolute_uri(url)
 
 
 def collect_files(request, self, page, collected_files, user):
-    spec = page.specific
-
-    for field in spec.content_panels:
-        sub_field = getattr(spec, field.field_name)
+    for _, field_name, instance in get_wagtail_panels_and_extra_fields(page):
+        sub_field = getattr(instance, field_name)
         if sub_field.__class__.__name__ in ['IonDocument', 'IonMedia'] and sub_field.include_in_archive:
             items = {sub_field.file.url: sub_field}
         elif sub_field.__class__.__name__ == 'IonImage' and sub_field.include_in_archive:
             try:
                 items = {request.build_absolute_uri(sub_field.archive_rendition.url): sub_field.archive_rendition}
-            except (ValueError, AttributeError) as e:
+            except ValueError as e:
                 if settings.ION_ALLOW_MISSING_FILES is True:
                     items = {}
                 else:
@@ -38,14 +32,13 @@ def collect_files(request, self, page, collected_files, user):
         else:
             items = {}
         if sub_field.__class__.__name__ == 'StreamFieldPanel':
-            sub_field = getattr(spec, field.field_name)
             for content in sub_field:
                 if content.__class__.__name__ in ['IonDocument', 'IonMedia'] and sub_field.include_in_archive:
                     items[content.file.url] = content
                 elif content.__class__.__name__ == 'IonImage' and sub_field.include_in_archive:
                     try:
                         items[request.build_absolute_uri(content.archive_rendition.url)] = content.archive_rendition
-                    except (ValueError, AttributeError) as e:
+                    except ValueError as e:
                         if settings.ION_ALLOW_MISSING_FILES is True:
                             items = {}
                         else:
@@ -118,7 +111,7 @@ def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSer
 
     # create index
     index_file = []
-    url = build_url(request, locale, page, variation=request.GET.get('variation', 'default'))
+    url = build_url(request, locale, page)
 
     index_file.append({
         "url": url,
@@ -215,7 +208,7 @@ def make_pagemeta(page, locale_code, request):
 
     # create index
     index_file = []
-    url = build_url(request, locale_code, page, variation=request.GET.get('variation', 'default'))
+    url = build_url(request, locale_code, page)
 
     index_file.append({
         "url": url,
