@@ -19,14 +19,3 @@ settings.ION_ALLOW_MISSING_FILES = getattr(
     False
 
 )
-settings.WAGTAIL_TO_ION_MODEL_MIXINS = getattr(
-    settings,
-    'WAGTAIL_TO_ION_MODEL_MIXINS',
-    {}
-)
-
-settings.ION_READ_ONLY_GROUPS = getattr(
-    settings,
-    'ION_READ_ONLY_GROUPS',
-    []
-)

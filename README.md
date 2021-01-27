@@ -104,20 +104,6 @@ Make sure you run a celery worker in addition to the django backend for the vide
 
 Set to true if the pages in the API are differently scoped for unique users. Defaults to `false`
 
-### `WAGTAIL_TO_ION_MODEL_MIXINS`
-
-Automatically add mixins to specific wagtail to ion models. (For more information see __4. Available Hooks__)
-
-Example:
-
-```python
-WAGTAIL_TO_ION_MODEL_MIXINS = {
-    'Language': (
-        'some_app.models.SomeMixinClass',
-    ),
-}
-```
-
 ### `ION_ALLOW_MISSING_FILES`
 
 If set to `True` the serializer allows missing media files and will just skip them, if set to `False` (the default) the renderer will throw an exception when a file is missing.
@@ -160,10 +146,6 @@ Sane defaults would be something like this:
     }
 }
 ```
-
-### `ION_READ_ONLY_GROUPS`
-
-Set CMS user groups that may not publish or edit pages but go into the CMS, defaults to empty list
 
 ## 4. Available hooks
 
