@@ -8,6 +8,7 @@ from rest_framework.renderers import JSONRenderer
 from wagtail_to_ion.tar import TarWriter
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.serializers import DynamicPageDetailSerializer
+from wagtail_to_ion.serializers.pages import get_wagtail_panels_and_extra_fields
 from wagtail_to_ion.utils import get_collection_for_page
 
 
@@ -21,10 +22,8 @@ def build_url(request, locale_code, page, variation='default'):
 
 
 def collect_files(request, self, page, collected_files, user):
-    spec = page.specific
-
-    for field in spec.content_panels:
-        sub_field = getattr(spec, field.field_name)
+    for _, field_name, instance in get_wagtail_panels_and_extra_fields(page):
+        sub_field = getattr(instance, field_name)
         if sub_field.__class__.__name__ in ['IonDocument', 'IonMedia'] and sub_field.include_in_archive:
             items = {sub_field.file.url: sub_field}
         elif sub_field.__class__.__name__ == 'IonImage' and sub_field.include_in_archive:
@@ -38,7 +37,7 @@ def collect_files(request, self, page, collected_files, user):
         else:
             items = {}
         if sub_field.__class__.__name__ == 'StreamFieldPanel':
-            sub_field = getattr(spec, field.field_name)
+            sub_field = getattr(instance, field_name)  # TODO: required?
             for content in sub_field:
                 if content.__class__.__name__ in ['IonDocument', 'IonMedia'] and sub_field.include_in_archive:
                     items[content.file.url] = content

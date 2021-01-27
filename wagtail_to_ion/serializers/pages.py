@@ -1,10 +1,11 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
-import re
 import os
-
+import re
 from datetime import datetime, date
+from typing import Iterable, Tuple
 
-from django.contrib.contenttypes.models import ContentType
+
+from django.db import models
 from django.urls import reverse
 
 from bs4 import BeautifulSoup
@@ -16,6 +17,7 @@ from wagtail.core.models import Page, PageViewRestriction
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.utils import isoDate, get_collection_for_page
 from wagtail_to_ion.models.file_based_models import AbstractIonImage, AbstractIonDocument, AbstractIonMedia
+
 from .base import DataObject
 
 
@@ -34,6 +36,36 @@ def parse_correct_html(content_type):
     for (regex, replacement) in replacements:
         content = regex.sub(replacement, content)
     return content
+
+
+def get_wagtail_panels_and_extra_fields(obj) -> Iterable[Tuple[str, str, models.Model]]:
+    """
+    Get all page panels and other fields from `page.ion_extra_fields` to include.
+
+    :returns: tuple of ``outlet_name``, ``attribute_name``, ``object``
+    """
+    if hasattr(obj.specific_class, 'ion_extra_fields'):
+        for item in obj.specific_class.ion_extra_fields():
+            if isinstance(item, str):
+                field_path = item
+                outlet_name = item
+            elif isinstance(item, (tuple, list)):
+                outlet_name, field_path = item
+            else:
+                raise NotImplementedError()
+
+            if '.' not in field_path:
+                yield outlet_name, field_path, obj.specific
+            else:
+                if len(field_path.split('.')) > 2:
+                    raise NotImplementedError()
+                relation, field_name = field_path.split('.')
+                related_obj = getattr(obj.specific, relation)
+                yield outlet_name, field_name, related_obj
+
+    for field in obj.specific.content_panels:
+        if hasattr(field, 'field_name'):
+            yield field.field_name, field.field_name, obj.specific
 
 
 def parse_data(content_data, content, fieldname, content_field_meta=None):
@@ -378,19 +410,16 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         if settings.GET_PAGES_BY_USER:
             obj, page_filled, wrapping = self.get_contents_for_user(obj, wrapping, request)
         if page_filled:
-            for field in obj.specific.content_panels:
-                field_data = getattr(obj.specific, field.field_name)
-                field_type = None
-                for fieldmeta in obj.specific._meta.fields:
-                    if fieldmeta.name == field.field_name:
-                        field_type = fieldmeta
-                        break
+            for outlet_name, field_name, instance in get_wagtail_panels_and_extra_fields(obj):
+                field_data = getattr(instance, field_name)
+                field_type = instance._meta.get_field(field_name)
+
                 content = {}
                 # parse content for all standard django and wagtail fields
-                if hasattr(fieldmeta, 'serialize_ion') and callable(fieldmeta.serialize_ion):
-                    content = fieldmeta.serialize_ion(field_data, content, field.field_name)
+                if hasattr(field_type, 'ion_serialize') and callable(field_type.ion_serialize):
+                    content = field_type.ion_serialize(field_data, content, outlet_name)
                 else:
-                    content = parse_data(field_data, content, field.field_name, content_field_meta=field_type)
+                    content = parse_data(field_data, content, outlet_name, content_field_meta=field_type)
                 if content:
                     if isinstance(content, list):
                         wrapping['children'].extend(content)
