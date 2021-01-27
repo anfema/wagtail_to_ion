@@ -16,6 +16,7 @@ from wagtail.core.models import Page, PageViewRestriction
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.utils import isoDate, get_collection_for_page
+from wagtail_to_ion.models.abstract import AbstractIonPage
 from wagtail_to_ion.models.file_based_models import AbstractIonImage, AbstractIonDocument, AbstractIonMedia
 
 from .base import DataObject
@@ -68,7 +69,7 @@ def get_wagtail_panels_and_extra_fields(obj) -> Iterable[Tuple[str, str, models.
             yield field.field_name, field.field_name, obj.specific
 
 
-def parse_data(content_data, content, fieldname, content_field_meta=None):
+def parse_data(content_data, content, fieldname, *, content_field_meta=None, block_type=None, streamfield=False, count=None):
     content['variation'] = 'default'
     content['is_searchable'] = False
 
@@ -105,7 +106,10 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
         content['text'] = content_data.strip()
         content['is_multiline'] = is_html
         content['mime_type'] = 'text/html' if is_html else 'text/plain'
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
         if not content_data:
             # Do not include this outlet in the json if the field is an empty string.
             content = None
@@ -140,21 +144,34 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
         content['translation_x'] = 0
         content['translation_y'] = 0
         content['scale'] = 1.0
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     # elif content_data.__class__.__name__ == 'StructValue':#TODO get class name color?
     # 	content['type'] = 'colorcontent'
     # 	content['r'] = content_data['r']
     # 	content['g'] = content_data['g']
     # 	content['b'] = content_data['b']
     # 	content['a'] = content_data['a']
+    # 	if streamfield:
+    # 		content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+    # 	else:
+    # 		content['outlet'] = fieldname
     elif content_data.__class__.__name__ == 'datetime':
         content['type'] = 'datetimecontent'
         content['datetime'] = isoDate(content_data)
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     elif content_data.__class__.__name__ == 'date':
         content['type'] = 'datetimecontent'
         content['datetime'] = isoDate(datetime(content_data.year, month=content_data.month, day=content_data.day))
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     elif isinstance(content_data, AbstractIonDocument):
         content['type'] = 'filecontent'
         content['mime_type'] = content_data.mime_type
@@ -169,17 +186,26 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
             else:
                 raise e
         content['checksum'] = content_data.checksum
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     elif content_data.__class__.__name__ == 'bool':
         content['type'] = 'flagcontent'
         content['is_enabled'] = content_data
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     elif isinstance(content_data, AbstractIonMedia):
         media_container = {}
         media_container['variation'] = 'default'
         media_container['is_searchable'] = False
         media_container['type'] = 'containercontent'
-        media_container['outlet'] = 'mediacontainer_{}'.format(fieldname)
+        if streamfield:
+            media_container['outlet'] = get_stream_field_outlet_name(fieldname, 'mediacontainer', count)
+        else:
+            media_container['outlet'] = 'mediacontainer_{}'.format(fieldname)
         media_container['children'] = []
 
         media_slot = {}
@@ -232,26 +258,39 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
     elif content_data.__class__.__name__ in ['int', 'float', 'Decimal']:
         content['type'] = 'numbercontent'
         content['value'] = content_data
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     elif content_data.__class__.__name__ == 'dict':
         content['type'] = 'tablecontent'
         content['cells'] = content_data['data']
         content['first_row_header'] = content_data['first_row_is_table_header']
         content['first_col_header'] = content_data['first_col_is_header']
-        content['outlet'] = fieldname
-    elif Page in content_data.__class__.__mro__:
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
+    elif isinstance(content_data, AbstractIonPage):
         content['type'] = 'connectioncontent'
         content['connection_string'] = '//{}/{}'.format(get_collection_for_page(content_data), content_data.slug)
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     elif content_data.__class__.__name__ == 'StreamValue':
         content['type'] = 'containercontent'
-        content['outlet'] = '{}_container'.format(fieldname)
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, 'container', count)
+        else:
+            content['outlet'] = '{}_container'.format(fieldname)
+
         # parse content for all wagtail streamfield block fields
         children = []
         for idx, item in enumerate(content_data):
-            child = parse_data(item.value, {}, fieldname)
-            child['position'] = idx
-            children.append(child)
+            children.append(
+                parse_data(item.value, {}, fieldname, block_type=item.block_type, streamfield=True, count=idx)
+            )
 
         # flatten
         if len(children) == 1:
@@ -271,7 +310,10 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
             result.append(r)
 
         content['type'] = 'containercontent'
-        content['outlet'] = '{}_container_{}'.format(fieldname, count)
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, 'container', count)
+        else:
+            content['outlet'] = '{}_container_{}'.format(fieldname, count)
         content['children'] = result
     return content
 
