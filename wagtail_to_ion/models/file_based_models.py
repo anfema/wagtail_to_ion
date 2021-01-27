@@ -102,6 +102,7 @@ class AbstractIonImage(AbstractImage):
         try:
             result.file.open()
             buffer = result.file.read(BUFFER_SIZE)
+            mime_type = magic_from_buffer(buffer, mime=True)
             while len(buffer) > 0:
                 h.update(buffer)
                 buffer = result.file.read(BUFFER_SIZE)
@@ -110,11 +111,12 @@ class AbstractIonImage(AbstractImage):
             if settings.ION_ALLOW_MISSING_FILES is True:
                 rendition = self.get_rendition_model()
                 result = rendition()
+                mime_type = 'application/x-empty'
             else:
                 raise e
 
         setattr(result, 'checksum', 'sha256:' + h.hexdigest())
-        setattr(result, 'mime_type', 'image/jpeg')
+        setattr(result, 'mime_type', mime_type)
         return result
 
 
