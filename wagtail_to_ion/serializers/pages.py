@@ -336,11 +336,12 @@ class DynamicPageSerializer(serializers.ModelSerializer):
         return isoDate(obj.last_published_at)
 
     def get_layout(self, obj):
-        ct = ContentType.objects.get_for_id(obj.content_type_id)
-        if hasattr(ct.model_class(), 'get_layout_name'):
-            return ct.model_class().get_layout_name()
-        else:
-            return ct.model_class().__name__.lower()
+        try:
+            api_version = int(self.context['request'].META['HTTP_API_VERSION']) or None
+        except (KeyError, ValueError):
+            api_version = None
+
+        return obj.specific_class.get_layout_name(api_version)
 
     def get_parent(self, obj):
         if obj.depth <= 4:

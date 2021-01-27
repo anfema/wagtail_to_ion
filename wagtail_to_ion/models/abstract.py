@@ -1,4 +1,6 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
+from typing import Optional
+
 from django.conf import settings
 from django.utils.text import slugify
 
@@ -32,13 +34,25 @@ class AbstractIonPage(Page):
         """
         return ()
 
-    # ion pages have no preview currently; clear preview modes
+    @classmethod
+    def get_layout_name(cls, api_version: Optional[int] = None):  # TODO: rename to `get_ion_layout_name`?
+        return cls.__name__.lower()  # TODO: use `cls._meta.model_name`?
+
+    #
+    # wagtail attributes/methods
+    #
+
+    # ion pages have no preview currently; clear wagtail preview modes
     preview_modes = ()
 
-    # ion pages have no public url (disables "live view" buttons too)
+    # ion pages have no public url (disables wagtail "live view" buttons too)
     def get_url_parts(self, request=None):
         site = Site.find_for_request(request)
         return site, None, None  # return only the site to silence the "no site configured" warning
+
+    #
+    # django model setup
+    #
 
     class Meta:
         abstract = True
