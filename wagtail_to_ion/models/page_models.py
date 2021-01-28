@@ -1,6 +1,7 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
 import json
 
+from django.conf import settings
 from django.utils.text import slugify
 from django.db import models
 from django.db.models.signals import pre_save
@@ -22,7 +23,7 @@ class AbstractIonLanguage(AbstractIonPage):
 
     ion_api_object_name = 'language'
 
-    # parent_page_types = [settings.ION_COLLECTION_MODEL]
+    parent_page_types = [settings.ION_COLLECTION_MODEL]
 
     content_panels = [
         MultiFieldPanel([
@@ -39,7 +40,7 @@ def sanitize_slug(sender, **kwargs):
     """
     Make sure all slug fields are actually slugified as wagtail does not enforce that
     """
-    if not (issubclass(sender, Page) or issubclass(sender, PageRevision)):
+    if not issubclass(sender, (Page, PageRevision)):
         return
     instance = kwargs.get('instance', None)
     if hasattr(instance, 'slug'):
