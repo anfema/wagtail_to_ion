@@ -30,12 +30,12 @@ Content:
 2. Add `ION_VIDEO_RENDITIONS` (see below) to `settings.py`
 3. Add overridden URLs into your `urls.py`
 ```python
-    url(r'^cms/', include('wagtail_to_ion.urls.wagtail_override_urls')), # overridden urls by the api adapter
-    url(r'^cms/', include(wagtailadmin_urls)),                           # default wagtail admin urls
+    path('cms/', include('wagtail_to_ion.urls.wagtail_override_urls')),  # overridden urls by the api adapter
+    path('cms/', include('wagtail.admin.urls')),                         # default wagtail admin urls
 ```
 4. Add new API URLs
 ```python
-    url(r'^', include('wagtail_to_ion.urls.api_urls')),
+    path('api/v1/', include(('wagtail_to_ion.urls.api_urls', 'wagtail_to_ion'), namespace='v1')),
 ```
 
 5. Create required models in your project inheriting from the abstract models provided by `wagtail_to_ion`:
