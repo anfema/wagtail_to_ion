@@ -30,7 +30,7 @@ class StartStopRangeWidget(Widget):
             else:
                 maxval = 0
         else:
-            maxval = value[1]
+            maxval = value[1] - 1  # upper boundary is excluded
 
         context['widget']['minvalue'] = minval
         context['widget']['maxvalue'] = maxval
@@ -63,4 +63,12 @@ class StartStopRangeWidget(Widget):
             except ValueError:
                 high = None
 
+        if high is not None:
+            high += 1  # upper boundary is excluded
+
         return [low, high]
+
+    def decompress(self, value):
+        if value:
+            return [value.lower, None if value.upper is None else value.upper - 1]  # upper boundary is excluded
+        return [None, None]
