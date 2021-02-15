@@ -1,12 +1,12 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
-import re
 import os
-
+import re
 from datetime import datetime, date
+from typing import Iterable, Tuple
 
-from django.contrib.contenttypes.models import ContentType
-from django.urls import reverse
+
 from django.db import models
+from django.urls import reverse
 
 from bs4 import BeautifulSoup
 from rest_framework import serializers
@@ -16,6 +16,9 @@ from wagtail.core.models import Page, PageViewRestriction
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.utils import isoDate, get_collection_for_page
+from wagtail_to_ion.models.abstract import AbstractIonPage
+from wagtail_to_ion.models.file_based_models import AbstractIonImage, AbstractIonDocument, AbstractIonMedia
+
 from .base import DataObject
 
 
@@ -36,7 +39,37 @@ def parse_correct_html(content_type):
     return content
 
 
-def parse_data(content_data, content, fieldname, content_field_meta=None):
+def get_wagtail_panels_and_extra_fields(obj) -> Iterable[Tuple[str, str, models.Model]]:
+    """
+    Get all page panels and other fields from `page.ion_extra_fields` to include.
+
+    :returns: tuple of ``outlet_name``, ``attribute_name``, ``object``
+    """
+    if hasattr(obj.specific_class, 'ion_extra_fields'):
+        for item in obj.specific_class.ion_extra_fields():
+            if isinstance(item, str):
+                field_path = item
+                outlet_name = item
+            elif isinstance(item, (tuple, list)):
+                outlet_name, field_path = item
+            else:
+                raise NotImplementedError()
+
+            if '.' not in field_path:
+                yield outlet_name, field_path, obj.specific
+            else:
+                if len(field_path.split('.')) > 2:
+                    raise NotImplementedError()
+                relation, field_name = field_path.split('.')
+                related_obj = getattr(obj.specific, relation)
+                yield outlet_name, field_name, related_obj
+
+    for field in obj.specific.content_panels:
+        if hasattr(field, 'field_name'):
+            yield field.field_name, field.field_name, obj.specific
+
+
+def parse_data(content_data, content, fieldname, *, content_field_meta=None, block_type=None, streamfield=False, count=None):
     content['variation'] = 'default'
     content['is_searchable'] = False
 
@@ -73,11 +106,14 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
         content['text'] = content_data.strip()
         content['is_multiline'] = is_html
         content['mime_type'] = 'text/html' if is_html else 'text/plain'
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
         if not content_data:
             # Do not include this outlet in the json if the field is an empty string.
             content = None
-    elif content_data.__class__.__name__ == 'IonImage':
+    elif isinstance(content_data, AbstractIonImage):
         archive = content_data.archive_rendition
         content['type'] = 'imagecontent'
         try:
@@ -108,22 +144,35 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
         content['translation_x'] = 0
         content['translation_y'] = 0
         content['scale'] = 1.0
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     # elif content_data.__class__.__name__ == 'StructValue':#TODO get class name color?
     # 	content['type'] = 'colorcontent'
     # 	content['r'] = content_data['r']
     # 	content['g'] = content_data['g']
     # 	content['b'] = content_data['b']
     # 	content['a'] = content_data['a']
+    # 	if streamfield:
+    # 		content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+    # 	else:
+    # 		content['outlet'] = fieldname
     elif content_data.__class__.__name__ == 'datetime':
         content['type'] = 'datetimecontent'
         content['datetime'] = isoDate(content_data)
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     elif content_data.__class__.__name__ == 'date':
         content['type'] = 'datetimecontent'
         content['datetime'] = isoDate(datetime(content_data.year, month=content_data.month, day=content_data.day))
-        content['outlet'] = fieldname
-    elif content_data.__class__.__name__ == 'IonDocument':
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
+    elif isinstance(content_data, AbstractIonDocument):
         content['type'] = 'filecontent'
         content['mime_type'] = content_data.mime_type
         content['name'] = content_data.title
@@ -137,17 +186,26 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
             else:
                 raise e
         content['checksum'] = content_data.checksum
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     elif content_data.__class__.__name__ == 'bool':
         content['type'] = 'flagcontent'
         content['is_enabled'] = content_data
-        content['outlet'] = fieldname
-    elif content_data.__class__.__name__ == 'IonMedia':
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
+    elif isinstance(content_data, AbstractIonMedia):
         media_container = {}
         media_container['variation'] = 'default'
         media_container['is_searchable'] = False
         media_container['type'] = 'containercontent'
-        media_container['outlet'] = 'mediacontainer_{}'.format(fieldname)
+        if streamfield:
+            media_container['outlet'] = get_stream_field_outlet_name(fieldname, 'mediacontainer', count)
+        else:
+            media_container['outlet'] = 'mediacontainer_{}'.format(fieldname)
         media_container['children'] = []
 
         media_slot = {}
@@ -214,26 +272,39 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
     elif content_data.__class__.__name__ in ['int', 'float', 'Decimal']:
         content['type'] = 'numbercontent'
         content['value'] = content_data
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     elif content_data.__class__.__name__ == 'dict':
         content['type'] = 'tablecontent'
         content['cells'] = content_data['data']
         content['first_row_header'] = content_data['first_row_is_table_header']
         content['first_col_header'] = content_data['first_col_is_header']
-        content['outlet'] = fieldname
-    elif Page in content_data.__class__.__mro__:
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
+    elif isinstance(content_data, AbstractIonPage):
         content['type'] = 'connectioncontent'
         content['connection_string'] = '//{}/{}'.format(get_collection_for_page(content_data), content_data.slug)
-        content['outlet'] = fieldname
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
     elif content_data.__class__.__name__ == 'StreamValue':
         content['type'] = 'containercontent'
-        content['outlet'] = '{}_container'.format(fieldname)
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, 'container', count)
+        else:
+            content['outlet'] = '{}_container'.format(fieldname)
+
         # parse content for all wagtail streamfield block fields
         children = []
         for idx, item in enumerate(content_data):
-            child = parse_data(item.value, {}, fieldname)
-            child['position'] = idx
-            children.append(child)
+            children.append(
+                parse_data(item.value, {}, fieldname, block_type=item.block_type, streamfield=True, count=idx)
+            )
 
         # flatten
         if len(children) == 1:
@@ -253,7 +324,10 @@ def parse_data(content_data, content, fieldname, content_field_meta=None):
             result.append(r)
 
         content['type'] = 'containercontent'
-        content['outlet'] = '{}_container_{}'.format(fieldname, count)
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, 'container', count)
+        else:
+            content['outlet'] = '{}_container_{}'.format(fieldname, count)
         content['children'] = result
     return content
 
@@ -273,14 +347,15 @@ class DynamicPageSerializer(serializers.ModelSerializer):
         return obj.slug
 
     def get_last_changed(self, obj):
-        return isoDate(obj.latest_revision_created_at)  # FIXME: Is this correct? Should this be last_published instead?
+        return isoDate(obj.last_published_at)
 
     def get_layout(self, obj):
-        ct = ContentType.objects.get_for_id(obj.content_type_id)
-        if hasattr(ct.model_class(), 'get_layout_name'):
-            return ct.model_class().get_layout_name()
-        else:
-            return ct.model_class().__name__.lower()
+        try:
+            api_version = int(self.context['request'].META['HTTP_API_VERSION']) or None
+        except (KeyError, ValueError):
+            api_version = None
+
+        return obj.specific_class.get_layout_name(api_version)
 
     def get_parent(self, obj):
         if obj.depth <= 4:
@@ -300,9 +375,8 @@ class DynamicPageSerializer(serializers.ModelSerializer):
           specific object to generate the value for the meta struct
         """
         result = {}
-        ct = ContentType.objects.get_for_id(obj.specific.content_type_id)
-        if hasattr(ct.model_class(), 'metadata'):
-            for item in ct.model_class().metadata():
+        if hasattr(obj.specific_class, 'ion_metadata'):
+            for item in obj.specific_class.ion_metadata():
                 if isinstance(item, tuple) or isinstance(item, list):
                     field_name = item[0]
                     generator = item[1]
@@ -393,19 +467,16 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         if settings.GET_PAGES_BY_USER:
             obj, page_filled, wrapping = self.get_contents_for_user(obj, wrapping, request)
         if page_filled:
-            for field in obj.specific.content_panels:
-                field_data = getattr(obj.specific, field.field_name)
-                field_type = None
-                for fieldmeta in obj.specific._meta.fields:
-                    if fieldmeta.name == field.field_name:
-                        field_type = fieldmeta
-                        break
+            for outlet_name, field_name, instance in get_wagtail_panels_and_extra_fields(obj):
+                field_data = getattr(instance, field_name)
+                field_type = instance._meta.get_field(field_name)
+
                 content = {}
                 # parse content for all standard django and wagtail fields
-                if hasattr(fieldmeta, 'serialize_ion') and callable(fieldmeta.serialize_ion):
-                    content = fieldmeta.serialize_ion(field_data, content, field.field_name)
+                if hasattr(field_type, 'ion_serialize') and callable(field_type.ion_serialize):
+                    content = field_type.ion_serialize(field_data, content, outlet_name)
                 else:
-                    content = parse_data(field_data, content, field.field_name, content_field_meta=field_type)
+                    content = parse_data(field_data, content, outlet_name, content_field_meta=field_type)
                 if content:
                     if isinstance(content, list):
                         wrapping['children'].extend(content)

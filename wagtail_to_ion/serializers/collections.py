@@ -4,7 +4,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
 from wagtail_to_ion.utils import visible_tree_by_user
-from wagtail_to_ion.models import get_collection_model
+from wagtail_to_ion.models import get_ion_collection_model
 from wagtail_to_ion.conf import settings
 
 from .pages import DynamicPageSerializer, DataObject
@@ -43,7 +43,7 @@ class CollectionSerializer(DataObject):
         return url
 
     class Meta:
-        model = get_collection_model()
+        model = get_ion_collection_model()
         fields = ('identifier', 'name', 'default_locale', 'fts_db', 'archive')
 
 
