@@ -251,7 +251,7 @@ class AbstractIonMedia(AbstractMedia):
         for rendition in self.renditions.all():
             rendition.delete()
         for key, config in settings.ION_VIDEO_RENDITIONS.items():
-            rendition = IonMediaRendition.objects.create(
+            rendition = get_ion_media_rendition_model().objects.create(
                 name=key,
                 media_item=self,
             )
