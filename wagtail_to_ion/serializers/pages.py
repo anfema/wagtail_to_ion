@@ -81,19 +81,19 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
         content['is_multiline'] = False
         content['mime_type'] = 'text/plain'
         content['outlet'] = fieldname
-    elif content_field_meta is not None and hasattr(content_field_meta, 'choices') and content_field_meta.choices is not None:
-        # Choicefield
-        content['type'] = 'optioncontent'
-        data = content_data
-        for key, display in content_field_meta.choices:
-            if key == content_data:
-                data = display
-                break
-        if data.__class__.__name__ == 'str':
-            content['value'] = data.strip()
-        else:
-            content['value'] = data
-        content['outlet'] = fieldname
+    # elif content_field_meta is not None and hasattr(content_field_meta, 'choices') and content_field_meta.choices is not None:
+    #     # Choicefield
+    #     content['type'] = 'optioncontent'
+    #     data = content_data
+    #     for key, display in content_field_meta.choices:
+    #         if key == content_data:
+    #             data = display
+    #             break
+    #     if data.__class__.__name__ == 'str':
+    #         content['value'] = data.strip()
+    #     else:
+    #         content['value'] = data
+    #     content['outlet'] = fieldname
     elif content_data.__class__.__name__ in ['str', 'RichText']:
         try:
             # check if text is html
