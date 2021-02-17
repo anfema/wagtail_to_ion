@@ -4,7 +4,7 @@ import re
 from datetime import datetime, date
 from typing import Iterable, Tuple
 
-
+from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.urls import reverse
 
@@ -469,7 +469,10 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         if page_filled:
             for outlet_name, field_name, instance in get_wagtail_panels_and_extra_fields(obj):
                 field_data = getattr(instance, field_name)
-                field_type = instance._meta.get_field(field_name)
+                try:
+                    field_type = instance._meta.get_field(field_name)
+                except FieldDoesNotExist:
+                    field_type = None
 
                 content = {}
                 # parse content for all standard django and wagtail fields
