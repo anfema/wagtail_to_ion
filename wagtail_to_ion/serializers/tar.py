@@ -2,7 +2,10 @@
 import json
 import os
 
+from django.core.exceptions import ImproperlyConfigured
 from django.urls import reverse
+from django.utils.module_loading import import_string
+
 from rest_framework.renderers import JSONRenderer
 
 from wagtail_to_ion.tar import TarWriter
@@ -12,13 +15,19 @@ from wagtail_to_ion.serializers.pages import get_wagtail_panels_and_extra_fields
 from wagtail_to_ion.utils import get_collection_for_page
 
 
-def build_url(request, locale_code, page, variation='default'):
-    url = reverse('v1:page-detail', kwargs={
-        'locale': locale_code,
-        'collection': get_collection_for_page(page),
-        'slug': page.slug,
-    })
-    return request.build_absolute_uri(url) + "?variation={}".format(variation)
+if settings.ION_ARCHIVE_BUILD_URL_FUNCTION is not None:
+    try:
+        build_url = import_string(settings.ION_ARCHIVE_BUILD_URL_FUNCTION)
+    except ImportError:
+        raise ImproperlyConfigured(f"The function {settings.ION_ARCHIVE_BUILD_URL_FUNCTION} couldn't be imported.")
+else:
+    def build_url(request, locale_code, page, variation='default'):
+        url = reverse('v1:page-detail', kwargs={
+            'locale': locale_code,
+            'collection': get_collection_for_page(page),
+            'slug': page.slug,
+        })
+        return request.build_absolute_uri(url) + "?variation={}".format(variation)
 
 
 def collect_files(request, self, page, collected_files, user):
