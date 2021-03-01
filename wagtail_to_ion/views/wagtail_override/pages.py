@@ -19,7 +19,7 @@ permission_checker = PermissionPolicyChecker(permission_policy)
 
 # add publish button to dropdown menu
 @hooks.register('register_page_listing_more_buttons')
-def page_listing_more_buttons(page, page_perms, is_parent=False):
+def page_listing_more_buttons(page, page_perms, is_parent=False, next_url=None):
     if page_perms.can_publish():
         yield Button(
             'Publish with children',
@@ -100,7 +100,7 @@ def ion_unpublish(request, page_id):
 def ion_publish_with_children(request, page_id):
     page = get_object_or_404(Page, id=page_id)
     page_perms = page.permissions_for_user(request.user)
-    
+
     if not page_perms.can_publish():
         raise PermissionDenied
 
