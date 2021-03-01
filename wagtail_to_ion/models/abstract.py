@@ -57,6 +57,20 @@ class AbstractIonPage(Page):
         site = Site.find_for_request(request)
         return site, None, None  # return only the site to silence the "no site configured" warning
 
+    # overwrite Page.copy() to automatically replace the page title & slug if `ion_generate_page_title` flag is set.
+    # this method is called for every child page too (on recursive copy).
+    def copy(self, *args, **kwargs):
+        if self.ion_generate_page_title:
+            new_page_title = self.generate_page_title()
+            new_update_attrs = kwargs.get('update_attrs', None) or {}
+            new_update_attrs.update({
+                'title': new_page_title,
+                'slug': slugify(new_page_title),
+            })
+            kwargs['update_attrs'] = new_update_attrs
+
+        return super().copy(*args, **kwargs)
+
     #
     # django model setup
     #
