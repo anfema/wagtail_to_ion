@@ -9,7 +9,7 @@ Content:
 
 ## 1. Requirements
 
-- Wagtail > 2.0 and WagtailMedia
+- Wagtail >= 2.12 and WagtailMedia
 - Django > 2.2
 - Celery
 - RestFramework
