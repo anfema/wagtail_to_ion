@@ -1,6 +1,7 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
+from django.utils.text import slugify
 from django.utils.translation import ugettext as _
 from django.urls import reverse
 from django.core.exceptions import PermissionDenied
@@ -135,13 +136,25 @@ class AutoTitleCopyForm(CopyForm):
     """
     Copy form for pages with auto-generated title & slug fields.
 
-    The `new_title` & `new_slug` fields are marked as optional and are omitted from the form (in the template).
+    The `new_title` & `new_slug` fields are marked as optional and can be omitted from the form.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for omitted_field in ('new_title', 'new_slug'):
             self.fields[omitted_field].required = False
+            self.fields[omitted_field].initial = ''
+
+    def clean(self):
+        # generate `new_title` & `new_slug`:
+        # only required for copy as alias functionality; new title & slug for standard copy operations are handled
+        # in `AbstractIonPage.copy()`
+        new_title = self.page.specific_class.generate_page_title()
+        return {
+            **super().clean(),
+            'new_title': new_title,
+            'new_slug': slugify(new_title),
+        }
 
 
 # Copy of the wagtail `wagtail.admin.views.pages.copy.copy()` view
@@ -150,6 +163,8 @@ class AutoTitleCopyForm(CopyForm):
 #  - `CopyForm` replaced by `AutoTitleCopyForm`
 #  - disabled `before_copy_page` hook handling
 #  - replaced template
+#  - fix crash when alias field is not available in form:
+#    replaced `form.cleaned_data['alias']` with `form.cleaned_data.get('alias')`
 #
 @user_passes_test(user_has_any_page_permission)
 def ion_copy_auto_title(request, page_id):
@@ -193,7 +208,7 @@ def ion_copy_auto_title(request, page_id):
             # Copy the page
             # Note that only users who can publish in the new parent page can create an alias.
             # This is because alias pages must always match their original page's state.
-            if can_publish and form.cleaned_data['alias']:
+            if can_publish and form.cleaned_data.get('alias'):
                 new_page = page.specific.create_alias(
                     recursive=form.cleaned_data.get('copy_subpages'),
                     parent=parent_page,
