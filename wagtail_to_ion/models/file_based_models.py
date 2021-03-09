@@ -3,6 +3,8 @@ import hashlib
 import os
 
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
 
@@ -203,20 +205,6 @@ class AbstractIonMedia(AbstractMedia):
         if needs_transcode:
             self.create_renditions()
 
-    def delete(self, *args, **kwargs):
-        try:
-            self.file.delete()
-        except ValueError:
-            pass
-        try:
-            self.thumbnail.delete()
-        except ValueError:
-            pass
-        # delete one by one to make sure files are deleted
-        for rendition in self.renditions.all():
-            rendition.delete()
-        super().delete(*args, **kwargs)
-
     def set_media_metadata(self):
         self.file.open()
         h = hashlib.new('sha256')
@@ -297,16 +285,18 @@ class AbstractIonMediaRendition(models.Model):
     def __str__(self):
         return "IonMediaRendition {} for {}".format(self.name, self.media_item)
 
-    def delete(self, *args, **kwargs):
+
+@receiver(post_delete)
+def remove_media_files(sender, instance, **kwargs):
+    if isinstance(instance, (AbstractIonMedia, AbstractIonMediaRendition)):
         try:
-            self.file.delete()
+            instance.file.delete(save=False)
         except ValueError:
             pass
         try:
-            self.thumbnail.delete()
+            instance.thumbnail.delete(save=False)
         except ValueError:
             pass
-        super().delete(*args, **kwargs)
 
 
 class IonMediaBlock(AbstractMediaChooserBlock):
