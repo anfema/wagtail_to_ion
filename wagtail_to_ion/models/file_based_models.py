@@ -3,7 +3,8 @@ import hashlib
 import os
 
 from django.db import models
-from django.db.models.signals import post_delete
+from django.db.models import ProtectedError
+from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from django.utils.translation import ugettext_lazy as _
 
@@ -300,6 +301,18 @@ class AbstractIonMediaRendition(models.Model):
 
     def __str__(self):
         return "IonMediaRendition {} for {}".format(self.name, self.media_item)
+
+
+@receiver(pre_delete)
+def prevent_deletion_if_in_use(sender, instance, **kwargs):
+    if isinstance(instance, (AbstractIonDocument, AbstractIonImage, AbstractIonMedia)):
+        usage = instance.get_usage()
+        if usage:
+            model_name = instance.__class__.__name__
+            raise ProtectedError(
+                f"Cannot delete instance of model '{model_name}' because it is referenced in stream field blocks",
+                usage,
+            )
 
 
 @receiver(post_delete)
