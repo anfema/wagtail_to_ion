@@ -9,7 +9,9 @@ from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
 
 from magic import from_buffer as magic_from_buffer
+from wagtail.documents.blocks import DocumentChooserBlock
 from wagtail.documents.models import AbstractDocument
+from wagtail.images.blocks import ImageChooserBlock
 from wagtail.images.models import AbstractImage, AbstractRendition
 from wagtailmedia.blocks import AbstractMediaChooserBlock
 from wagtailmedia.models import AbstractMedia
@@ -54,6 +56,10 @@ class AbstractIonDocument(AbstractDocument):
         super().save(*args, **kwargs)
         os.chmod(self.file.path, 0o644)
 
+    def get_usage(self):
+        from wagtail_to_ion.utils import get_object_block_usage
+        return super().get_usage().union(get_object_block_usage(self, block_types=DocumentChooserBlock))
+
 
 class AbstractIonImage(AbstractImage):
     checksum = models.CharField(max_length=255)
@@ -91,6 +97,10 @@ class AbstractIonImage(AbstractImage):
             raise exception
         super().save(*args, **kwargs)
         os.chmod(self.file.path, 0o644)
+
+    def get_usage(self):
+        from wagtail_to_ion.utils import get_object_block_usage
+        return super().get_usage().union(get_object_block_usage(self, block_types=ImageChooserBlock))
 
     @property
     def archive_rendition(self):
@@ -204,6 +214,10 @@ class AbstractIonMedia(AbstractMedia):
         # remove all renditions and generate new ones
         if needs_transcode:
             self.create_renditions()
+
+    def get_usage(self):
+        from wagtail_to_ion.utils import get_object_block_usage
+        return super().get_usage().union(get_object_block_usage(self, block_types=IonMediaBlock))
 
     def set_media_metadata(self):
         self.file.open()
