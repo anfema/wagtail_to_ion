@@ -14,6 +14,7 @@ from wagtail.images.blocks import ImageChooserBlock
 from wagtail.images.models import AbstractImage, AbstractRendition
 from wagtailmedia.models import AbstractMedia
 
+from wagtail_to_ion.blocks import IonMediaBlock
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models import get_ion_media_rendition_model
 from wagtail_to_ion.tasks import generate_media_rendition, get_audio_metadata
@@ -34,6 +35,7 @@ class AbstractIonDocument(AbstractDocument):
         'tags',
         'include_in_archive',
     )
+    check_usage_block_types = (DocumentChooserBlock,)
 
     class Meta:
         abstract = True
@@ -56,7 +58,7 @@ class AbstractIonDocument(AbstractDocument):
 
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
-        return super().get_usage().union(get_object_block_usage(self, block_types=DocumentChooserBlock))
+        return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
 
 
 class AbstractIonImage(AbstractImage):
@@ -76,6 +78,7 @@ class AbstractIonImage(AbstractImage):
         'focal_point_height',
         'include_in_archive',
     )
+    check_usage_block_types = (ImageChooserBlock,)
 
     class Meta:
         abstract = True
@@ -98,7 +101,7 @@ class AbstractIonImage(AbstractImage):
 
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
-        return super().get_usage().union(get_object_block_usage(self, block_types=ImageChooserBlock))
+        return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
 
     @property
     def archive_rendition(self):
@@ -168,6 +171,7 @@ class AbstractIonMedia(AbstractMedia):
         'collection',
         'tags',
     )
+    check_usage_block_types = (IonMediaBlock,)
 
     class Meta:
         abstract = True
@@ -215,7 +219,7 @@ class AbstractIonMedia(AbstractMedia):
 
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
-        return super().get_usage().union(get_object_block_usage(self, block_types=IonMediaBlock))
+        return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
 
     def set_media_metadata(self):
         self.file.open()
