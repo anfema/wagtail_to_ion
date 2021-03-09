@@ -5,7 +5,6 @@ import os
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
-from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
 
 from magic import from_buffer as magic_from_buffer
@@ -13,7 +12,6 @@ from wagtail.documents.blocks import DocumentChooserBlock
 from wagtail.documents.models import AbstractDocument
 from wagtail.images.blocks import ImageChooserBlock
 from wagtail.images.models import AbstractImage, AbstractRendition
-from wagtailmedia.blocks import AbstractMediaChooserBlock
 from wagtailmedia.models import AbstractMedia
 
 from wagtail_to_ion.conf import settings
@@ -311,18 +309,3 @@ def remove_media_files(sender, instance, **kwargs):
             instance.thumbnail.delete(save=False)
         except ValueError:
             pass
-
-
-class IonMediaBlock(AbstractMediaChooserBlock):
-    @cached_property
-    def target_model(self):
-        from wagtailmedia.models import get_media_model
-        return get_media_model()
-
-    @cached_property
-    def widget(self):
-        from wagtailmedia.widgets import AdminMediaChooser
-        return AdminMediaChooser
-
-    def render_basic(self, value, context=None):
-        raise NotImplementedError('You need to implement %s.render_basic' % self.__class__.__name__)
