@@ -49,7 +49,7 @@
                 </ul>
                 <p>{% trans "Are you sure you want to publish this page and all of its children?" %}</p>
                 <li>
-                    <input type="submit" value="{% trans 'Yes, publish all pages.' %}" class="button">
+                    <input type="submit" value="{% trans 'Yes, publish all pages.' %}" class="button" {% if has_unpublished_alias_pages %}disabled=""{% endif %}>
                     <a href="{% if next %}{{ next }}{% else %}{% url 'wagtailadmin_explore' page.get_parent.id %}{% endif %}" class="button button-secondary">{% trans "No, don't publish." %}</a>
                 </li>
             </ul>
