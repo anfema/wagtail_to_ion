@@ -107,7 +107,7 @@ def ion_publish_with_children(request, page_id):
         raise PermissionDenied
 
     revision = page.get_latest_revision()
-    unpublished_descendant_pages = page.get_descendants().filter(live=False).specific()
+    unpublished_descendant_pages = page.get_descendants().not_live()
 
     next_url = get_valid_next_url_from_request(request)
 
@@ -128,7 +128,7 @@ def ion_publish_with_children(request, page_id):
         'page': page,
         'next': next_url,
         'unpublished_descendants': unpublished_descendant_pages,
-        'unpublished_descendant_count': page.get_descendants().not_live().count(),
+        'unpublished_descendant_count': unpublished_descendant_pages.count(),
     })
 
 

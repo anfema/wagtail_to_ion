@@ -3,7 +3,7 @@
 {% load i18n %}
 {% load l10n %}
 
-{% block titletag %}{% blocktrans with title=page.get_admin_display_title page_type=content_type.model_class.get_verbose_name %}Publish {{ page_type }}: {{ title }}{% endblocktrans %}{% endblock %}
+{% block titletag %}{% blocktrans with title=page.specific_deferred.get_admin_display_title page_type=content_type.model_class.get_verbose_name %}Publish {{ page_type }}: {{ title }}{% endblocktrans %}{% endblock %}
 
 {% block content %}
 {% page_permissions page as page_perms %}
@@ -11,7 +11,7 @@
         <div class="row row-flush">
             <div class="left col9 header-title">
                 <h1 class="icon icon-doc-empty-inverse">
-                {% blocktrans with title=page.get_admin_display_title page_type=content_type.model_class.get_verbose_name %}Publish {{ page_type }} <span>{{ title }}</span>{% endblocktrans %}</h1>
+                {% blocktrans with title=page.specific_deferred.get_admin_display_title page_type=content_type.model_class.get_verbose_name %}Publish {{ page_type }} <span>{{ title }}</span>{% endblocktrans %}</h1>
             </div>
         </div>
     </header>
@@ -38,7 +38,7 @@
                 <ul class="listing">
                     {% for page in unpublished_descendants %}
                         <div>
-                            <h2><a href="">{{ page.get_admin_display_title }}</a></h2>
+                            <h2><a href="">{{ page.specific_deferred.get_admin_display_title }}</a></h2>
                             {% if page.live %}
                                 <p>Published: Yes</p>
                             {% else %}
