@@ -1,0 +1,19 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+wagtail-to-ion = {editable = true, path = "."}
+psycopg2 = "*"
+wagtail = "*"
+wagtailmedia = "*"
+python-magic = "*"
+celery = {extras = ["redis"], version = "*"}
+django = "*"
+pillow = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
