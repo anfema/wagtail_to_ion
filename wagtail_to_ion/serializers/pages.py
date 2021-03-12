@@ -74,13 +74,35 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
     content['is_searchable'] = False
 
     if content_data.__class__.__name__ == 'list':
-        # this content is (so far) only used by the survey_link JSONField in CandidateSpecificSurvey
-        url = content_data[0]['value']
-        content['type'] = 'textcontent'
-        content['text'] = url
-        content['is_multiline'] = False
-        content['mime_type'] = 'text/plain'
+        result = []
+        for idx, item in enumerate(content_data):
+            ctx = {}
+            result.append(
+                parse_data(
+                    item,
+                    ctx,
+                    get_stream_field_outlet_name(fieldname, block_type, count),
+                    count=idx
+                )
+            )
+
+        content['type'] = 'containercontent'
+        content['children'] = result
         content['outlet'] = fieldname
+
+        if streamfield:
+            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
+        else:
+            content['outlet'] = fieldname
+
+        # FIXME: special case for BCG
+        # this content is (so far) only used by the survey_link JSONField in CandidateSpecificSurvey
+        # url = content_data[0]['value']
+        # content['type'] = 'textcontent'
+        # content['text'] = url
+        # content['is_multiline'] = False
+        # content['mime_type'] = 'text/plain'
+        # content['outlet'] = fieldname
     # elif content_field_meta is not None and hasattr(content_field_meta, 'choices') and content_field_meta.choices is not None:
     #     # Choicefield
     #     content['type'] = 'optioncontent'
@@ -319,9 +341,21 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
             r = parse_data(content_data[item], {}, item)
             if r is None:
                 continue
-            r['variation'] = 'default'
-            r['is_searchable'] = False
-            result.append(r)
+            if isinstance(r, dict):
+                r['variation'] = 'default'
+                r['is_searchable'] = False
+                result.append(r)
+            elif isinstance(r, list):
+                container = {}
+                container['type'] = 'containercontent'
+                container['outlet'] = fieldname
+                container['variation'] = 'default'
+                container['is_searchable'] = False
+                for item in r:
+                    item['variation'] = 'default'
+                    item['is_searchable'] = False
+                container['children'] = r
+                result.append(container)
 
         content['type'] = 'containercontent'
         if streamfield:
