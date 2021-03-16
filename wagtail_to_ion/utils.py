@@ -150,8 +150,8 @@ def get_object_block_usage(obj, block_types: Union[Type[Block], Tuple[Type[Block
 
         for page_with_obj_pk_in_blocks in page_model.objects.filter(stream_field_filter_q):
             for field_name in stream_fields:
-                for block, value, in_struct in get_stream_value_blocks(getattr(page_with_obj_pk_in_blocks, field_name)):
-                    if isinstance(block, block_types) and value == obj:
+                for bound_block, _ in get_stream_value_blocks(getattr(page_with_obj_pk_in_blocks, field_name)):
+                    if isinstance(bound_block.block, block_types) and bound_block.value == obj:
                         page_ptr_ids.add(page_with_obj_pk_in_blocks.page_ptr_id)
 
     return Page.objects.filter(pk__in=page_ptr_ids)
@@ -175,9 +175,8 @@ def get_stream_field_blocks(stream_field) -> Generator[StreamFieldBlockInfo, Non
 
 
 class StreamValueBlockInfo(NamedTuple):
-    block_type: Block
-    block_value: Any
-    json_field_name: str
+    bound_block: BoundBlock
+    json_value_field_name: str
 
 
 def get_stream_value_blocks(stream_value: StreamValue) -> Generator[StreamValueBlockInfo, None, None]:
@@ -189,14 +188,14 @@ def get_stream_value_blocks(stream_value: StreamValue) -> Generator[StreamValueB
                 if isinstance(stream_block.value, StructValue):
                     yield from unnest_blocks(stream_block.value)
                 else:
-                    yield StreamValueBlockInfo(stream_block.block, stream_block.value, 'value')
+                    yield StreamValueBlockInfo(stream_block, 'value')
         elif isinstance(value, StructValue):
             for block_name, bound_block in value.bound_blocks.items():
                 assert isinstance(bound_block, BoundBlock)
                 if isinstance(bound_block.value, StreamValue):
                     yield from unnest_blocks(bound_block.value)
                 else:
-                    yield StreamValueBlockInfo(bound_block.block, bound_block.value, block_name)
+                    yield StreamValueBlockInfo(bound_block, block_name)
         else:
             raise RuntimeError(f'Unexpected type: {type(value)}')
 
