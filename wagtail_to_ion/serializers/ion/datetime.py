@@ -1,0 +1,35 @@
+from __future__ import annotations
+from typing import List, Any, Union, Dict, Optional
+from datetime import date, datetime
+
+from wagtail_to_ion.utils import isoDate
+from .base import IonSerializer, T
+
+
+class IonDateTimeSerializer(IonSerializer):
+    """
+    This serializer handles ``date`` and ``datetime`` objects
+    """
+
+    def __init__(self, name: str, data: Union[date, datetime]) -> None:
+        super().__init__(name)
+        self.data = data
+
+    def serialize(self) -> Optional[Dict[str, Any]]:
+        result = super().serialize()
+
+        result['type'] = 'datetimecontent'
+
+        if isinstance(self.data, date):
+            result['datetime'] = isoDate(datetime(self.data.year, month=self.data.month, day=self.data.day))
+        else:
+            result['datetime'] = isoDate(self.data)
+
+        return result
+
+    @classmethod
+    def supported_types(cls) -> List[T]:
+        return [date, datetime]
+
+
+IonSerializer.register(IonDateTimeSerializer)
