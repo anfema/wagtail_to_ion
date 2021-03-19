@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, Any, Union, Dict, Optional
 
+from wagtail.core.models import Page
 from wagtail_to_ion.models.abstract import AbstractIonPage
 from wagtail_to_ion.utils import get_collection_for_page
 
@@ -15,7 +16,7 @@ class IonPageSerializer(IonSerializer):
     and collection only.
     """
 
-    def __init__(self, name: str, data: AbstractIonPage) -> None:
+    def __init__(self, name: str, data: Union[AbstractIonPage, Page]) -> None:
         super().__init__(name)
         self.data = data
 
@@ -29,7 +30,7 @@ class IonPageSerializer(IonSerializer):
 
     @classmethod
     def supported_types(cls) -> List[T]:
-        return [AbstractIonPage]
+        return [AbstractIonPage, Page]
 
 
 IonSerializer.register(IonPageSerializer)
