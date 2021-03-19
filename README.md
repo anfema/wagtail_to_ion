@@ -92,7 +92,7 @@ ION_MEDIA_RENDITION_MODEL = 'my_app.IonMediaRendition'
 ION_CONTENT_TYPE_DESCRIPTION_MODEL = 'my_app.ContentTypeDescription'
 ```
 
-7. (Optional) Create models for custom page types inheriting from `AbstractIonPage` 
+7. (Optional) Create models for custom page types inheriting from `AbstractIonPage`
 
 8. Create and apply migrations
 
@@ -219,7 +219,7 @@ class CollectionDetailSerializerOverride(CollectionDetailSerializer, CollectionS
   - Override `get_last_changed` if you want to implement per user dynamic pages that change more often than
     they are actually published.
 - `DynamicPageDetailSerializer`, serializes page meta data and content, inherits from `DynamicPageSerializer`
-  - Override `get_contents_for_user` to implement per user dynamic pages that render completely custom data
+  - Override `build_tree` to implement per user dynamic pages that render completely custom data
   - Override `get_children` for additional filtering.
 
 Attention: When you override `DynamicPageSerializer` you have to override the

@@ -8,9 +8,6 @@ from wagtail_to_ion.models import get_ion_collection_model
 from wagtail_to_ion.models.abstract import AbstractIonCollection
 
 
-IonCollection = get_ion_collection_model()
-
-
 def get_user_collections(user):
     """
     Return collections for the user
@@ -60,8 +57,9 @@ def get_collection_for_page(page):
 
 # TODO: might be obsolete once https://github.com/wagtail/wagtail/pull/6300 has been merged
 def visible_tree_by_user(root, user):
+    IonCollection = get_ion_collection_model()
     collection = IonCollection.objects.get(live=True, slug=get_collection_for_page(root))
-    
+
     if collection.view_restrictions.exists():
         restrictions = collection.view_restrictions.filter(
             restriction_type=PageViewRestriction.GROUPS,
@@ -95,6 +93,7 @@ def visible_tree_by_user(root, user):
 
 
 def visible_collections_by_user(user):
+    IonCollection = get_ion_collection_model()
     collections = IonCollection.objects.filter(live=True)
     if not user.is_active:
         collections = collections.public()

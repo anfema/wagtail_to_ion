@@ -150,11 +150,6 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
     def get_locale(self, obj):
         return getattr(obj, 'locale_code', getattr(obj.specific, 'locale_code', None))
 
-    def get_contents_for_user(self, obj, request):
-        # Just returns the content vanilla as user specific content is
-        # a thing for the implementer of special page types
-        return obj, True
-
     def remap_outlet_name(self, outlet_path):
         # just returns the outlet name unaltered as remapping
         # usually happens in specialized serializers
@@ -170,28 +165,19 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         for item in struct['children']:
             self.remap_outlet_names_recursive(item, path + [struct['outlet']])
 
-    def get_contents(self, obj):
-        request = self.context['request']
-
+    def build_tree(self, obj, request):
         # Create a top-level container
         container = IonContainerSerializer('container_0')
 
-        # check if we want to render this page
-        render_page = True
-        if settings.GET_PAGES_BY_USER:
-            # Special case to render user specific pages, the function may return a new ``obj`` to render
-            obj, render_page = self.get_contents_for_user(obj, request)
+        # add all outlets to the container
+        for outlet_name, field_name, instance in get_wagtail_panels_and_extra_fields(obj):
+            container.add_child(outlet_name, getattr(instance, field_name)) # This will auto-detect the serializers to use
 
-        # if we want to render, add all outlets to the container
-        if render_page:
-            for outlet_name, field_name, instance in get_wagtail_panels_and_extra_fields(obj):
-                field_data = getattr(instance, field_name)
-                if field_data is None:  # If field_data is None, the serializer can not do anything, skip this
-                    continue
-                container.add_child(outlet_name, field_data) # This will auto-detect the serializers to use
+        return container
 
+    def get_contents(self, obj):
         # serialize into a ``dict`` with simple data types
-        data = container.serialize()
+        data = self.build_tree(obj, self.context.get('request', None)).serialize()
 
         # optionally remap outlet names if needed (e.g. outlet should be called like a reserved word in python)
         self.remap_outlet_names_recursive(data, [])
