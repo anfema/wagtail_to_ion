@@ -3,15 +3,19 @@ import hashlib
 import os
 
 from django.db import models
-from django.utils.functional import cached_property
+from django.db.models import ProtectedError
+from django.db.models.signals import post_delete, pre_delete
+from django.dispatch import receiver
 from django.utils.translation import ugettext_lazy as _
 
 from magic import from_buffer as magic_from_buffer
+from wagtail.documents.blocks import DocumentChooserBlock
 from wagtail.documents.models import AbstractDocument
+from wagtail.images.blocks import ImageChooserBlock
 from wagtail.images.models import AbstractImage, AbstractRendition
-from wagtailmedia.blocks import AbstractMediaChooserBlock
 from wagtailmedia.models import AbstractMedia
 
+from wagtail_to_ion.blocks import IonMediaBlock
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models import get_ion_media_rendition_model
 from wagtail_to_ion.tasks import generate_media_rendition, get_audio_metadata
@@ -32,6 +36,7 @@ class AbstractIonDocument(AbstractDocument):
         'tags',
         'include_in_archive',
     )
+    check_usage_block_types = (DocumentChooserBlock,)
 
     class Meta:
         abstract = True
@@ -51,6 +56,10 @@ class AbstractIonDocument(AbstractDocument):
             raise exception
         super().save(*args, **kwargs)
         os.chmod(self.file.path, 0o644)
+
+    def get_usage(self):
+        from wagtail_to_ion.utils import get_object_block_usage
+        return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
 
 
 class AbstractIonImage(AbstractImage):
@@ -70,6 +79,7 @@ class AbstractIonImage(AbstractImage):
         'focal_point_height',
         'include_in_archive',
     )
+    check_usage_block_types = (ImageChooserBlock,)
 
     class Meta:
         abstract = True
@@ -89,6 +99,10 @@ class AbstractIonImage(AbstractImage):
             raise exception
         super().save(*args, **kwargs)
         os.chmod(self.file.path, 0o644)
+
+    def get_usage(self):
+        from wagtail_to_ion.utils import get_object_block_usage
+        return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
 
     @property
     def archive_rendition(self):
@@ -158,6 +172,7 @@ class AbstractIonMedia(AbstractMedia):
         'collection',
         'tags',
     )
+    check_usage_block_types = (IonMediaBlock,)
 
     class Meta:
         abstract = True
@@ -203,19 +218,9 @@ class AbstractIonMedia(AbstractMedia):
         if needs_transcode:
             self.create_renditions()
 
-    def delete(self, *args, **kwargs):
-        try:
-            self.file.delete()
-        except ValueError:
-            pass
-        try:
-            self.thumbnail.delete()
-        except ValueError:
-            pass
-        # delete one by one to make sure files are deleted
-        for rendition in self.renditions.all():
-            rendition.delete()
-        super().delete(*args, **kwargs)
+    def get_usage(self):
+        from wagtail_to_ion.utils import get_object_block_usage
+        return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
 
     def set_media_metadata(self):
         self.file.open()
@@ -297,28 +302,27 @@ class AbstractIonMediaRendition(models.Model):
     def __str__(self):
         return "IonMediaRendition {} for {}".format(self.name, self.media_item)
 
-    def delete(self, *args, **kwargs):
+
+@receiver(pre_delete)
+def prevent_deletion_if_in_use(sender, instance, **kwargs):
+    if isinstance(instance, (AbstractIonDocument, AbstractIonImage, AbstractIonMedia)):
+        usage = instance.get_usage()
+        if usage:
+            model_name = instance.__class__.__name__
+            raise ProtectedError(
+                f"Cannot delete instance of model '{model_name}' because it is referenced in stream field blocks",
+                usage,
+            )
+
+
+@receiver(post_delete)
+def remove_media_files(sender, instance, **kwargs):
+    if isinstance(instance, (AbstractIonMedia, AbstractIonMediaRendition)):
         try:
-            self.file.delete()
+            instance.file.delete(save=False)
         except ValueError:
             pass
         try:
-            self.thumbnail.delete()
+            instance.thumbnail.delete(save=False)
         except ValueError:
             pass
-        super().delete(*args, **kwargs)
-
-
-class IonMediaBlock(AbstractMediaChooserBlock):
-    @cached_property
-    def target_model(self):
-        from wagtailmedia.models import get_media_model
-        return get_media_model()
-
-    @cached_property
-    def widget(self):
-        from wagtailmedia.widgets import AdminMediaChooser
-        return AdminMediaChooser
-
-    def render_basic(self, value, context=None):
-        raise NotImplementedError('You need to implement %s.render_basic' % self.__class__.__name__)
