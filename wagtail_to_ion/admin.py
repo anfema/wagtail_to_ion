@@ -4,13 +4,30 @@ from django.contrib import admin
 from wagtail_to_ion.models import get_ion_media_rendition_model
 
 
-class AbstractIonImageAdmin(admin.ModelAdmin):
+class ProtectInUseModelAdmin(admin.ModelAdmin):
+    protect_objects_in_use: bool = True
+
+    def get_deleted_objects(self, objs, request):
+        if self.protect_objects_in_use:
+            protected = []
+
+            for obj in objs:
+                usage = obj.get_usage()
+                if usage:
+                    protected += list(usage)
+            if protected:
+                return [], {}, set(), protected
+
+        return super().get_deleted_objects(objs, request)
+
+
+class AbstractIonImageAdmin(ProtectInUseModelAdmin):
     list_display = ('title', 'collection', 'include_in_archive')
     list_filter = ('collection', 'include_in_archive')
     search_fields = ('title',)
 
 
-class AbstractIonDocumentAdmin(admin.ModelAdmin):
+class AbstractIonDocumentAdmin(ProtectInUseModelAdmin):
     list_display = ('title', 'collection', 'include_in_archive')
     list_filter = ('collection', 'include_in_archive')
     search_fields = ('title',)
@@ -21,7 +38,7 @@ class IonMediaRenditionInlineAdmin(admin.TabularInline):
     extra = 0
 
 
-class AbstractIonMediaAdmin(admin.ModelAdmin):
+class AbstractIonMediaAdmin(ProtectInUseModelAdmin):
     list_display = ('title', 'collection', 'include_in_archive')
     list_filter = ('collection', 'include_in_archive')
     search_fields = ('title',)

@@ -1,3 +1,4 @@
 from .show_only_user_images import show_only_user_images
 from .show_only_user_documents import show_only_user_documents
 from .dual_range_slider import global_admin_css, global_admin_js
+from .wagtail_admin_urls import register_admin_urls

@@ -19,3 +19,9 @@ settings.ION_ALLOW_MISSING_FILES = getattr(
     False
 
 )
+
+settings.ION_ARCHIVE_BUILD_URL_FUNCTION = getattr(
+    settings,
+    'ION_ARCHIVE_BUILD_URL_FUNCTION',
+    None
+)

@@ -22,6 +22,7 @@ class AbstractIonLanguage(AbstractIonPage):
         abstract = True
 
     ion_api_object_name = 'language'
+    ion_generate_page_title = False
 
     parent_page_types = [settings.ION_COLLECTION_MODEL]
 

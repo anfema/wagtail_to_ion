@@ -4,7 +4,7 @@ import re
 from datetime import datetime, date
 from typing import Iterable, Tuple
 
-
+from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.urls import reverse
 
@@ -81,19 +81,19 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
         content['is_multiline'] = False
         content['mime_type'] = 'text/plain'
         content['outlet'] = fieldname
-    elif content_field_meta is not None and hasattr(content_field_meta, 'choices') and content_field_meta.choices is not None:
-        # Choicefield
-        content['type'] = 'optioncontent'
-        data = content_data
-        for key, display in content_field_meta.choices:
-            if key == content_data:
-                data = display
-                break
-        if data.__class__.__name__ == 'str':
-            content['value'] = data.strip()
-        else:
-            content['value'] = data
-        content['outlet'] = fieldname
+    # elif content_field_meta is not None and hasattr(content_field_meta, 'choices') and content_field_meta.choices is not None:
+    #     # Choicefield
+    #     content['type'] = 'optioncontent'
+    #     data = content_data
+    #     for key, display in content_field_meta.choices:
+    #         if key == content_data:
+    #             data = display
+    #             break
+    #     if data.__class__.__name__ == 'str':
+    #         content['value'] = data.strip()
+    #     else:
+    #         content['value'] = data
+    #     content['outlet'] = fieldname
     elif content_data.__class__.__name__ in ['str', 'RichText']:
         try:
             # check if text is html
@@ -215,42 +215,56 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
         thumbnail_slot['type'] = 'imagecontent'
 
         if os.path.exists(content_data.file.path):
-            rendition = content_data.renditions.filter(transcode_finished=True).first()
-            if rendition is None:
-                rendition = content_data
-            media_slot['mime_type'] = content_data.mime_type
-            media_slot['file'] = settings.BASE_URL + rendition.file.url
-            media_slot['checksum'] = rendition.checksum
-            media_slot['width'] = rendition.width if rendition.width else 0
-            media_slot['height'] = rendition.height if rendition.height else 0
-            media_slot['length'] = content_data.duration
-            media_slot['file_size'] = rendition.file.size
-            media_slot['name'] = content_data.title
-            media_slot['original_mime_type'] = content_data.mime_type
-            media_slot['original_file'] = settings.BASE_URL + content_data.file.url
-            media_slot['original_checksum'] = content_data.checksum
-            media_slot['original_width'] = content_data.width if content_data.width else 0
-            media_slot['original_height'] = content_data.height if content_data.height else 0
-            media_slot['original_length'] = content_data.duration
-            media_slot['original_file_size'] = content_data.file.size
-            media_slot['outlet'] = 'video'
+            if content_data.type == 'audio':
+                media_slot['mime_type'] = content_data.mime_type
+                media_slot['file'] = settings.BASE_URL + content_data.file.url
+                media_slot['checksum'] = content_data.checksum
+                media_slot['length'] = content_data.duration
+                media_slot['file_size'] = content_data.file.size
+                media_slot['name'] = content_data.title
+                media_slot['original_mime_type'] = content_data.mime_type
+                media_slot['original_file'] = settings.BASE_URL + content_data.file.url
+                media_slot['original_checksum'] = content_data.checksum
+                media_slot['original_length'] = content_data.duration
+                media_slot['original_file_size'] = content_data.file.size
+                media_slot['outlet'] = 'audio'
+            else:
+                rendition = content_data.renditions.filter(transcode_finished=True).first()
+                if rendition is None:
+                    rendition = content_data
+                media_slot['mime_type'] = content_data.mime_type
+                media_slot['file'] = settings.BASE_URL + rendition.file.url
+                media_slot['checksum'] = rendition.checksum
+                media_slot['width'] = rendition.width if rendition.width else 0
+                media_slot['height'] = rendition.height if rendition.height else 0
+                media_slot['length'] = content_data.duration
+                media_slot['file_size'] = rendition.file.size
+                media_slot['name'] = content_data.title
+                media_slot['original_mime_type'] = content_data.mime_type
+                media_slot['original_file'] = settings.BASE_URL + content_data.file.url
+                media_slot['original_checksum'] = content_data.checksum
+                media_slot['original_width'] = content_data.width if content_data.width else 0
+                media_slot['original_height'] = content_data.height if content_data.height else 0
+                media_slot['original_length'] = content_data.duration
+                media_slot['original_file_size'] = content_data.file.size
+                media_slot['outlet'] = 'video'
 
-            thumbnail_slot['mime_type'] = content_data.thumbnail_mime_type
-            thumbnail_slot['image'] = settings.BASE_URL + rendition.thumbnail.url
-            thumbnail_slot['checksum'] = rendition.thumbnail_checksum
-            thumbnail_slot['width'] = rendition.width
-            thumbnail_slot['height'] = rendition.height
-            thumbnail_slot['file_size'] = rendition.thumbnail.size
-            thumbnail_slot['original_mime_type'] = content_data.thumbnail_mime_type
-            thumbnail_slot['original_image'] = settings.BASE_URL + content_data.thumbnail.url
-            thumbnail_slot['original_checksum'] = content_data.thumbnail_checksum
-            thumbnail_slot['original_width'] = content_data.width
-            thumbnail_slot['original_height'] = content_data.height
-            thumbnail_slot['original_file_size'] = content_data.thumbnail.size
-            thumbnail_slot['translation_x'] = 0
-            thumbnail_slot['translation_y'] = 0
-            thumbnail_slot['scale'] = 1.0
-            thumbnail_slot['outlet'] = "video_thumbnail"
+                thumbnail_slot['mime_type'] = content_data.thumbnail_mime_type
+                thumbnail_slot['image'] = settings.BASE_URL + rendition.thumbnail.url
+                thumbnail_slot['checksum'] = rendition.thumbnail_checksum
+                thumbnail_slot['width'] = rendition.width
+                thumbnail_slot['height'] = rendition.height
+                thumbnail_slot['file_size'] = rendition.thumbnail.size
+                thumbnail_slot['original_mime_type'] = content_data.thumbnail_mime_type
+                thumbnail_slot['original_image'] = settings.BASE_URL + content_data.thumbnail.url
+                thumbnail_slot['original_checksum'] = content_data.thumbnail_checksum
+                thumbnail_slot['original_width'] = content_data.width
+                thumbnail_slot['original_height'] = content_data.height
+                thumbnail_slot['original_file_size'] = content_data.thumbnail.size
+                thumbnail_slot['translation_x'] = 0
+                thumbnail_slot['translation_y'] = 0
+                thumbnail_slot['scale'] = 1.0
+                thumbnail_slot['outlet'] = "video_thumbnail"
 
         fill_contents(media_slot, media_container)
         fill_contents(thumbnail_slot, media_container)
@@ -271,7 +285,7 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
             content['outlet'] = fieldname
-    elif isinstance(content_data, AbstractIonPage):
+    elif isinstance(content_data, AbstractIonPage) or isinstance(content_data, Page):
         content['type'] = 'connectioncontent'
         content['connection_string'] = '//{}/{}'.format(get_collection_for_page(content_data), content_data.slug)
         if streamfield:
@@ -455,7 +469,10 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         if page_filled:
             for outlet_name, field_name, instance in get_wagtail_panels_and_extra_fields(obj):
                 field_data = getattr(instance, field_name)
-                field_type = instance._meta.get_field(field_name)
+                try:
+                    field_type = instance._meta.get_field(field_name)
+                except FieldDoesNotExist:
+                    field_type = None
 
                 content = {}
                 # parse content for all standard django and wagtail fields
