@@ -66,7 +66,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/anfema/wagtail_to_ion",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=("test_app", "test_app.*", "test_proj", "test_proj.*")),
     classifiers=[
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3 :: Only",
