@@ -285,7 +285,7 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
             content['outlet'] = fieldname
-    elif isinstance(content_data, AbstractIonPage):
+    elif isinstance(content_data, AbstractIonPage) or isinstance(content_data, Page):
         content['type'] = 'connectioncontent'
         content['connection_string'] = '//{}/{}'.format(get_collection_for_page(content_data), content_data.slug)
         if streamfield:
