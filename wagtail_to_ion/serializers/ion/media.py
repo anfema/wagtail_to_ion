@@ -55,6 +55,7 @@ class IonVideoSerializer(IonSerializer):
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
         result.update({
+            'type': 'mediacontent',
             'mime_type': self.data.mime_type,
             'file': settings.BASE_URL + self.rendition.file.url,
             'checksum': self.rendition.checksum,
@@ -92,6 +93,7 @@ class IonVideoThumbnailSerializer(IonSerializer):
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
         result.update({
+            'type': 'imagecontent',
             'mime_type': self.data.thumbnail_mime_type,
             'image': settings.BASE_URL + self.rendition.thumbnail.url,
             'checksum': self.rendition.thumbnail_checksum,
