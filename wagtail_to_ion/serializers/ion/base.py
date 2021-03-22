@@ -47,7 +47,7 @@ class IonSerializer:
 
         # Add index only if not deactivated by setting it to ``None```
         if self.index is not None:
-            result['index'] = self.index
+            result['index'] = int(self.index)
         return result
 
     def json(self):
