@@ -28,7 +28,7 @@ def get_wagtail_panels_and_extra_fields(obj) -> Iterable[Tuple[str, str, models.
             if isinstance(item, str):
                 field_path = item
                 outlet_name = item
-            elif isinstance(item, (tuple, list)):
+            elif isinstance(item, (tuple, list)) and len(item) == 2:
                 outlet_name, field_path = item
             else:
                 raise NotImplementedError()
@@ -169,6 +169,9 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         # Create a top-level container
         container = IonContainerSerializer('container_0')
 
+        if obj is None:
+            return container
+
         # add all outlets to the container
         for outlet_name, field_name, instance in get_wagtail_panels_and_extra_fields(obj):
             container.add_child(outlet_name, getattr(instance, field_name)) # This will auto-detect the serializers to use
@@ -177,7 +180,11 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
 
     def get_contents(self, obj):
         # serialize into a ``dict`` with simple data types
-        data = self.build_tree(obj, self.context.get('request', None)).serialize()
+        data = self.build_tree(obj, self.context.get('request', None))
+        if data is None:
+            return []
+        
+        data = data.serialize()
 
         # optionally remap outlet names if needed (e.g. outlet should be called like a reserved word in python)
         self.remap_outlet_names_recursive(data, [])
