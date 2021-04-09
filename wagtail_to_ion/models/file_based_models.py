@@ -1,7 +1,8 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
 import hashlib
-import os
+from typing import Optional, Tuple
 
+from django.core.files import File
 from django.db import models
 from django.db.models import ProtectedError
 from django.db.models.signals import post_delete, pre_delete
@@ -21,7 +22,24 @@ from wagtail_to_ion.models import get_ion_media_rendition_model
 from wagtail_to_ion.tasks import generate_media_rendition, get_audio_metadata
 
 
+Checksum = str
+MimeType = str
+
+
 BUFFER_SIZE = 64 * 1024
+
+
+def get_file_metadata(file: File, detect_mime_type: bool = True) -> Tuple[Checksum, Optional[MimeType]]:
+    """Calculate checksum and detect mime type in one go."""
+    sha256 = hashlib.sha256()
+    mime_type = None
+
+    for i, chunk in enumerate(file.chunks(chunk_size=BUFFER_SIZE)):
+        sha256.update(chunk)
+        if detect_mime_type and i == 0:
+            mime_type = magic_from_buffer(chunk, mime=True)
+
+    return f'sha256:{sha256.hexdigest()}', mime_type
 
 
 class AbstractIonDocument(AbstractDocument):
@@ -42,20 +60,8 @@ class AbstractIonDocument(AbstractDocument):
         abstract = True
 
     def save(self, *args, **kwargs):
-        try:
-            self.file.open()
-            h = hashlib.new('sha256')
-            buffer = self.file.read(BUFFER_SIZE)
-            if not self.mime_type:
-                self.mime_type = magic_from_buffer(buffer, mime=True)
-            while len(buffer) > 0:
-                h.update(buffer)
-                buffer = self.file.read(BUFFER_SIZE)
-            self.checksum = 'sha256:' + h.hexdigest()
-        except FileNotFoundError as exception:
-            raise exception
+        self.checksum, self.mime_type = get_file_metadata(self.file)
         super().save(*args, **kwargs)
-        os.chmod(self.file.path, 0o644)
 
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
@@ -85,20 +91,8 @@ class AbstractIonImage(AbstractImage):
         abstract = True
 
     def save(self, *args, **kwargs):
-        try:
-            self.file.open()
-            h = hashlib.new('sha256')
-            buffer = self.file.read(BUFFER_SIZE)
-            if not self.mime_type:
-                self.mime_type = magic_from_buffer(buffer, mime=True)
-            while len(buffer) > 0:
-                h.update(buffer)
-                buffer = self.file.read(BUFFER_SIZE)
-            self.checksum = 'sha256:' + h.hexdigest()
-        except FileNotFoundError as exception:
-            raise exception
+        self.checksum, self.mime_type = get_file_metadata(self.file)
         super().save(*args, **kwargs)
-        os.chmod(self.file.path, 0o644)
 
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
@@ -108,25 +102,16 @@ class AbstractIonImage(AbstractImage):
     def archive_rendition(self):
         result = self.get_rendition(self.rendition_type)
 
-        h = hashlib.new('sha256')
         try:
-            result.file.open()
-            buffer = result.file.read(BUFFER_SIZE)
-            mime_type = magic_from_buffer(buffer, mime=True)
-            while len(buffer) > 0:
-                h.update(buffer)
-                buffer = result.file.read(BUFFER_SIZE)
-            self.checksum = 'sha256:' + h.hexdigest()
+            result.checksum, result.mime_type = get_file_metadata(result.file)
         except FileNotFoundError as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
                 rendition = self.get_rendition_model()
                 result = rendition()
-                mime_type = 'application/x-empty'
+                result.mime_type = 'application/x-empty'
             else:
                 raise e
 
-        setattr(result, 'checksum', 'sha256:' + h.hexdigest())
-        setattr(result, 'mime_type', mime_type)
         return result
 
 
@@ -208,11 +193,6 @@ class AbstractIonMedia(AbstractMedia):
             self.set_media_metadata()
 
         super().save(*args, **kwargs)
-        try:
-            os.chmod(self.file.path, 0o644)
-            os.chmod(self.thumbnail.path, 0o644)
-        except ValueError:
-            pass
 
         # remove all renditions and generate new ones
         if needs_transcode:
@@ -223,33 +203,15 @@ class AbstractIonMedia(AbstractMedia):
         return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
 
     def set_media_metadata(self):
-        self.file.open()
-        h = hashlib.new('sha256')
-        buffer = self.file.read(BUFFER_SIZE)
-        self.mime_type = magic_from_buffer(buffer, mime=True)
-        while len(buffer) > 0:
-            h.update(buffer)
-            buffer = self.file.read(BUFFER_SIZE)
-        self.checksum = 'sha256:' + h.hexdigest()
-        self.file.seek(0)
+        self.checksum, self.mime_type = get_file_metadata(self.file)
 
         if self.type == 'audio':
             metadata = get_audio_metadata(self.file)
             self.duration = round(float(metadata.get('duration')))
 
     def set_thumbnail_metadata(self):
-        try:
-            self.thumbnail.open()
-            h = hashlib.new('sha256')
-            buffer = self.thumbnail.read(BUFFER_SIZE)
-            if not self.thumbnail_mime_type:
-                self.thumbnail_mime_type = magic_from_buffer(buffer, mime=True)
-            while len(buffer) > 0:
-                h.update(buffer)
-                buffer = self.thumbnail.read(BUFFER_SIZE)
-            self.thumbnail_checksum = 'sha256:' + h.hexdigest()
-        except ValueError:
-            pass
+        self.thumbnail_checksum, self.thumbnail_mime_type = get_file_metadata(self.thumbnail)
+        # TODO: handle ValueError exception?
 
     def create_renditions(self):
         renditions = []
