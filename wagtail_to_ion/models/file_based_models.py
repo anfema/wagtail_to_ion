@@ -3,7 +3,7 @@ import hashlib
 from typing import Optional, Tuple
 
 from django.core.files import File
-from django.db import models
+from django.db import models, transaction
 from django.db.models import ProtectedError
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
@@ -19,8 +19,7 @@ from wagtailmedia.models import AbstractMedia
 from wagtail_to_ion.blocks import IonMediaBlock
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models import get_ion_media_rendition_model
-from wagtail_to_ion.tasks import generate_media_rendition, get_audio_metadata
-
+from wagtail_to_ion.tasks import generate_media_rendition, get_audio_metadata, generate_media_thumbnail
 
 Checksum = str
 MimeType = str
@@ -163,36 +162,46 @@ class AbstractIonMedia(AbstractMedia):
         abstract = True
 
     def save(self, *args, **kwargs):
+        skip_state_detection = kwargs.pop('skip_state_detection', False)  # True if fields have been set by a task
+
+        if skip_state_detection:
+            super().save(*args, **kwargs)
+            return
+
         # handle audio files
         if self.type == 'audio':
             self.set_media_metadata()
             super().save(*args, **kwargs)
+            transaction.on_commit(lambda: get_audio_metadata.delay(self.pk))
             return
 
         # handle video files
         needs_transcode = False
         needs_thumbnail = False
-        try:
-            obj = self._meta.default_manager.get(pk=self.pk)
-        except self.DoesNotExist:
+
+        if not self.pk:
             needs_transcode = True
             needs_thumbnail = True
         else:
-            if not obj.file.path == self.file.path:
-                needs_transcode = True
-            try:
-                if not obj.thumbnail.path == self.thumbnail.path:
-                    needs_thumbnail = True
-            except ValueError:
-                pass
+            obj = self._meta.default_manager.get(pk=self.pk)
 
-        if needs_thumbnail:
-            self.set_thumbnail_metadata()
+            if obj.file != self.file:
+                needs_transcode = True
+                needs_thumbnail = True
+            elif obj.thumbnail != self.thumbnail:
+                if self.pk:  # thumbnail was manually changed
+                    if not self.thumbnail:  # thumbnail was reset
+                        needs_thumbnail = True
+                    else:
+                        self.set_thumbnail_metadata()
 
         if needs_transcode:
             self.set_media_metadata()
 
         super().save(*args, **kwargs)
+
+        if needs_thumbnail:
+            transaction.on_commit(lambda: generate_media_thumbnail.delay(self.pk))
 
         # remove all renditions and generate new ones
         if needs_transcode:
@@ -205,32 +214,19 @@ class AbstractIonMedia(AbstractMedia):
     def set_media_metadata(self):
         self.checksum, self.mime_type = get_file_metadata(self.file)
 
-        if self.type == 'audio':
-            metadata = get_audio_metadata(self.file)
-            self.duration = round(float(metadata.get('duration')))
-
     def set_thumbnail_metadata(self):
         self.thumbnail_checksum, self.thumbnail_mime_type = get_file_metadata(self.thumbnail)
-        # TODO: handle ValueError exception?
 
     def create_renditions(self):
-        renditions = []
+        is_video_file = self.mime_type.startswith('video/')
         for rendition in self.renditions.all():
             rendition.delete()
         for key, config in settings.ION_VIDEO_RENDITIONS.items():
-            rendition = get_ion_media_rendition_model().objects.create(
+            get_ion_media_rendition_model().objects.create(
                 name=key,
                 media_item=self,
+                transcode_errors='Not a video file' if not is_video_file else None,
             )
-            if not self.mime_type.startswith('video/'):
-                rendition.transcode_errors = 'Not a video file'
-                rendition.save()
-            renditions.append(rendition)
-
-        if self.mime_type.startswith('video/'):
-            # Run transcode in background
-            for rendition in renditions:
-                generate_media_rendition.delay(rendition.id)
 
 
 class AbstractIonMediaRendition(models.Model):
@@ -263,6 +259,17 @@ class AbstractIonMediaRendition(models.Model):
 
     def __str__(self):
         return "IonMediaRendition {} for {}".format(self.name, self.media_item)
+
+    def save(self, *args, **kwargs):
+        created = self.pk is None
+        super().save(*args, **kwargs)
+        if created:
+            transaction.on_commit(lambda: generate_media_rendition.delay(self.pk))
+
+    @property
+    def transcode_settings(self) -> Optional[dict]:
+        if self.name:
+            return settings.ION_VIDEO_RENDITIONS[self.name]
 
 
 @receiver(pre_delete)
