@@ -30,7 +30,7 @@ else:
         return request.build_absolute_uri(url) + "?variation={}".format(variation)
 
 
-def collect_files(request, self, page, collected_files, user):
+def collect_files(request, page, collected_files, user):
     for _, field_name, instance in get_wagtail_panels_and_extra_fields(page):
         sub_field = getattr(instance, field_name)
         if sub_field.__class__.__name__ in ['IonDocument', 'IonMedia'] and sub_field.include_in_archive:
@@ -135,7 +135,7 @@ def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSer
 
     # collect all files
     collected_files = []
-    collect_files(request, page, page, collected_files, user)
+    collect_files(request, page, collected_files, user)
     i = {}
     for f in collected_files:
         if f["page"] not in i:
@@ -232,7 +232,7 @@ def make_pagemeta(page, locale_code, request):
 
     # collect all files
     collected_files = []
-    collect_files(request, page, page, collected_files, user)
+    collect_files(request, page, collected_files, user)
     i = {}
     for f in collected_files:
         if f["page"] not in i:
