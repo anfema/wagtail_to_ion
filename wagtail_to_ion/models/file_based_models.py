@@ -44,6 +44,7 @@ def get_file_metadata(file: File, detect_mime_type: bool = True) -> Tuple[Checks
 class AbstractIonDocument(AbstractDocument):
     checksum = models.CharField(max_length=255)
     mime_type = models.CharField(max_length=128)
+    file_last_modified = models.DateTimeField(null=True, editable=False)
     include_in_archive = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
     admin_form_fields = (
@@ -70,6 +71,7 @@ class AbstractIonDocument(AbstractDocument):
 class AbstractIonImage(AbstractImage):
     checksum = models.CharField(max_length=255)
     mime_type = models.CharField(max_length=128)
+    file_last_modified = models.DateTimeField(null=True, editable=False)
     rendition_type = models.CharField(max_length=128, default='jpegquality-70')
     include_in_archive = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -116,6 +118,8 @@ class AbstractIonImage(AbstractImage):
 
 class AbstractIonRendition(AbstractRendition):
     image = models.ForeignKey(settings.WAGTAILIMAGES_IMAGE_MODEL, related_name='renditions', on_delete=models.CASCADE)
+    file_size = models.PositiveIntegerField(null=True, editable=False)
+    file_last_modified = models.DateTimeField(null=True, editable=False)
 
     class Meta:
         abstract = True
@@ -141,9 +145,13 @@ class AbstractIonMedia(AbstractMedia):
     )
     width = models.PositiveIntegerField(null=True, blank=True, verbose_name=_('width'))
     height = models.PositiveIntegerField(null=True, blank=True, verbose_name=_('height'))
+    file_size = models.PositiveIntegerField(null=True, editable=False)
+    file_last_modified = models.DateTimeField(null=True, editable=False)
 
     thumbnail_checksum = models.CharField(blank=True, max_length=255)
     thumbnail_mime_type = models.CharField(blank=True, max_length=128)
+    thumbnail_file_size = models.PositiveIntegerField(null=True, editable=False)
+    thumbnail_file_last_modified = models.DateTimeField(null=True, editable=False)
     include_in_archive = models.BooleanField(
         default=False,
         help_text="If enabled, the file will be included in the ION archive "
@@ -243,7 +251,11 @@ class AbstractIonMediaRendition(models.Model):
         related_name='renditions',
     )
     file = models.FileField(upload_to='media_renditions', null=True, blank=True, verbose_name=_('file'))
+    file_size = models.PositiveIntegerField(null=True, editable=False)
+    file_last_modified = models.DateTimeField(null=True, editable=False)
     thumbnail = models.FileField(upload_to='media_thumbnails', null=True, blank=True, verbose_name=_('thumbnail'))
+    thumbnail_file_size = models.PositiveIntegerField(null=True, editable=False)
+    thumbnail_file_last_modified = models.DateTimeField(null=True, editable=False)
     width = models.PositiveIntegerField(null=True, blank=True, verbose_name=_('width'))
     height = models.PositiveIntegerField(null=True, blank=True, verbose_name=_('height'))
     transcode_finished = models.BooleanField(default=False)
