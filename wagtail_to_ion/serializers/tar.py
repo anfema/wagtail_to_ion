@@ -64,7 +64,11 @@ def collect_files(request, page, collected_files, user):
                 item['url'] = key
                 item['page'] = page.slug
                 item['checksum'] = file.checksum
-                item['path'] = file.file.path
+                try:
+                    item['path'] = file.file.path
+                except NotImplementedError:
+                    item['path'] = None
+                item['file'] = file.file
                 collected_files.append(item)
 
 
@@ -168,7 +172,7 @@ def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSer
 
     # add all files
     for f in collected_files:
-        tar.add_file(f['path'], f['tar_name'])
+        tar.add_file_from_storage(f['file'], f['tar_name'])
 
     return tar.data()
 
@@ -213,7 +217,7 @@ def make_tar(pages, updated_pages, locale_code, request, content_serializer=Dyna
 
     # add all files
     for f in collected_files:
-        tar.add_file(f['path'], f['tar_name'])
+        tar.add_file_from_storage(f['file'], f['tar_name'])
 
     return tar.data()
 

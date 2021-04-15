@@ -3,6 +3,8 @@ import os
 import calendar
 import datetime
 
+from django.db.models.fields.files import FieldFile
+
 
 class TarWriter:
     def __init__(self):
@@ -18,6 +20,12 @@ class TarWriter:
             date = datetime.datetime.fromtimestamp(file_stat.st_mtime)
         self.write_header(archive_filename, file_stat.st_size, date=date)
         with open(filename.encode("utf-8"), "rb") as fp:
+            self.write_padded(fp.read())
+
+    def add_file_from_storage(self, file: FieldFile, archive_filename: str):
+        last_mod = file.storage.modified_time(file.name)  # naive datetime
+        self.write_header(archive_filename, file.size, date=last_mod)
+        with file.open('rb') as fp:
             self.write_padded(fp.read())
 
     def add_dir(self, archive_path, date=None):
