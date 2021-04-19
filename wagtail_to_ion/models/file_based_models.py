@@ -1,47 +1,49 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
-import hashlib
-from typing import Optional, Tuple
+from __future__ import annotations
 
-from django.core.files import File
+from typing import Optional
+
 from django.db import models, transaction
 from django.db.models import ProtectedError
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from django.utils.translation import ugettext_lazy as _
 
-from magic import from_buffer as magic_from_buffer
 from wagtail.documents.blocks import DocumentChooserBlock
 from wagtail.documents.models import AbstractDocument
 from wagtail.images.blocks import ImageChooserBlock
-from wagtail.images.models import AbstractImage, AbstractRendition
+from wagtail.images.models import AbstractImage, AbstractRendition, SourceImageIOError, get_upload_to, \
+    get_rendition_upload_to
 from wagtailmedia.models import AbstractMedia
 
 from wagtail_to_ion.blocks import IonMediaBlock
 from wagtail_to_ion.conf import settings
+from wagtail_to_ion.fields.files import IonFileField, IonImageField
 from wagtail_to_ion.models import get_ion_media_rendition_model
 from wagtail_to_ion.tasks import generate_media_rendition, get_audio_metadata, generate_media_thumbnail
 
-Checksum = str
-MimeType = str
 
+FILE_META_FIELDS = {
+    'checksum_field': 'checksum',
+    'mime_type_field': 'mime_type',
+    'file_size_field': 'file_size',
+    'last_modified_field': 'file_last_modified',
+}
 
-BUFFER_SIZE = 64 * 1024
-
-
-def get_file_metadata(file: File, detect_mime_type: bool = True) -> Tuple[Checksum, Optional[MimeType]]:
-    """Calculate checksum and detect mime type in one go."""
-    sha256 = hashlib.sha256()
-    mime_type = None
-
-    for i, chunk in enumerate(file.chunks(chunk_size=BUFFER_SIZE)):
-        sha256.update(chunk)
-        if detect_mime_type and i == 0:
-            mime_type = magic_from_buffer(chunk, mime=True)
-
-    return f'sha256:{sha256.hexdigest()}', mime_type
+THUMBNAIL_META_FIELDS = {
+    'checksum_field': 'thumbnail_checksum',
+    'mime_type_field': 'thumbnail_mime_type',
+    'file_size_field': 'thumbnail_file_size',
+    'last_modified_field': 'thumbnail_file_last_modified',
+}
 
 
 class AbstractIonDocument(AbstractDocument):
+    file = IonFileField(
+        upload_to='documents',
+        verbose_name=_('file'),
+        **FILE_META_FIELDS,
+    )
     checksum = models.CharField(max_length=255)
     mime_type = models.CharField(max_length=128)
     file_last_modified = models.DateTimeField(null=True, editable=False)
@@ -59,16 +61,19 @@ class AbstractIonDocument(AbstractDocument):
     class Meta:
         abstract = True
 
-    def save(self, *args, **kwargs):
-        self.checksum, self.mime_type = get_file_metadata(self.file)
-        super().save(*args, **kwargs)
-
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
         return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
 
 
 class AbstractIonImage(AbstractImage):
+    file = IonImageField(
+        upload_to=get_upload_to,
+        verbose_name=_('file'),
+        width_field='width',
+        height_field='height',
+        **FILE_META_FIELDS,
+    )
     checksum = models.CharField(max_length=255)
     mime_type = models.CharField(max_length=128)
     file_last_modified = models.DateTimeField(null=True, editable=False)
@@ -91,25 +96,18 @@ class AbstractIonImage(AbstractImage):
     class Meta:
         abstract = True
 
-    def save(self, *args, **kwargs):
-        self.checksum, self.mime_type = get_file_metadata(self.file)
-        super().save(*args, **kwargs)
-
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
         return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
 
     @property
     def archive_rendition(self):
-        result = self.get_rendition(self.rendition_type)
-
         try:
-            result.checksum, result.mime_type = get_file_metadata(result.file)
-        except FileNotFoundError as e:
+            result = self.get_rendition(self.rendition_type)
+        except (FileNotFoundError, SourceImageIOError) as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
                 rendition = self.get_rendition_model()
                 result = rendition()
-                result.mime_type = 'application/x-empty'
             else:
                 raise e
 
@@ -118,6 +116,14 @@ class AbstractIonImage(AbstractImage):
 
 class AbstractIonRendition(AbstractRendition):
     image = models.ForeignKey(settings.WAGTAILIMAGES_IMAGE_MODEL, related_name='renditions', on_delete=models.CASCADE)
+    file = IonImageField(
+        upload_to=get_rendition_upload_to,
+        width_field='width',
+        height_field='height',
+        **FILE_META_FIELDS,
+    )
+    checksum = models.CharField(max_length=255, null=True)
+    mime_type = models.CharField(max_length=128, null=True)
     file_size = models.PositiveIntegerField(null=True, editable=False)
     file_last_modified = models.DateTimeField(null=True, editable=False)
 
@@ -129,13 +135,19 @@ class AbstractIonRendition(AbstractRendition):
 
 
 class AbstractIonMedia(AbstractMedia):
+    file = IonFileField(
+        upload_to='media',
+        verbose_name=_('file'),
+        **FILE_META_FIELDS,
+    )
     checksum = models.CharField(max_length=255)
     mime_type = models.CharField(max_length=128)
-    thumbnail = models.ImageField(
+    thumbnail = IonImageField(
         upload_to='media_thumbnails',
         verbose_name=_('thumbnail'),
         null=True,
-        blank=True
+        blank=True,
+        **THUMBNAIL_META_FIELDS,
     )
     duration = models.PositiveIntegerField(
         verbose_name=_('duration'),
@@ -178,7 +190,6 @@ class AbstractIonMedia(AbstractMedia):
 
         # handle audio files
         if self.type == 'audio':
-            self.set_media_metadata()
             super().save(*args, **kwargs)
             transaction.on_commit(lambda: get_audio_metadata.delay(self.pk))
             return
@@ -200,11 +211,6 @@ class AbstractIonMedia(AbstractMedia):
                 if self.pk:  # thumbnail was manually changed
                     if not self.thumbnail:  # thumbnail was reset
                         needs_thumbnail = True
-                    else:
-                        self.set_thumbnail_metadata()
-
-        if needs_transcode:
-            self.set_media_metadata()
 
         super().save(*args, **kwargs)
 
@@ -218,12 +224,6 @@ class AbstractIonMedia(AbstractMedia):
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
         return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
-
-    def set_media_metadata(self):
-        self.checksum, self.mime_type = get_file_metadata(self.file)
-
-    def set_thumbnail_metadata(self):
-        self.thumbnail_checksum, self.thumbnail_mime_type = get_file_metadata(self.thumbnail)
 
     def create_renditions(self):
         is_video_file = self.mime_type.startswith('video/')
@@ -250,18 +250,32 @@ class AbstractIonMediaRendition(models.Model):
         on_delete=models.CASCADE,
         related_name='renditions',
     )
-    file = models.FileField(upload_to='media_renditions', null=True, blank=True, verbose_name=_('file'))
+    file = IonFileField(
+        upload_to='media_renditions',
+        null=True,
+        blank=True,
+        verbose_name=_('file'),
+        **FILE_META_FIELDS,
+    )
     file_size = models.PositiveIntegerField(null=True, editable=False)
     file_last_modified = models.DateTimeField(null=True, editable=False)
-    thumbnail = models.FileField(upload_to='media_thumbnails', null=True, blank=True, verbose_name=_('thumbnail'))
-    thumbnail_file_size = models.PositiveIntegerField(null=True, editable=False)
-    thumbnail_file_last_modified = models.DateTimeField(null=True, editable=False)
+    thumbnail = IonImageField(
+        upload_to='media_thumbnails',
+        null=True,
+        blank=True,
+        verbose_name=_('thumbnail'),
+        **THUMBNAIL_META_FIELDS,
+    )
     width = models.PositiveIntegerField(null=True, blank=True, verbose_name=_('width'))
     height = models.PositiveIntegerField(null=True, blank=True, verbose_name=_('height'))
     transcode_finished = models.BooleanField(default=False)
     transcode_errors = models.TextField(blank=True, null=True)
     checksum = models.CharField(max_length=255, default='null:')
+    mime_type = models.CharField(max_length=128, null=True)
     thumbnail_checksum = models.CharField(max_length=255, default='null:')
+    thumbnail_mime_type = models.CharField(max_length=128, null=True)
+    thumbnail_file_size = models.PositiveIntegerField(null=True, editable=False)
+    thumbnail_file_last_modified = models.DateTimeField(null=True, editable=False)
 
     class Meta:
         abstract = True
@@ -276,6 +290,7 @@ class AbstractIonMediaRendition(models.Model):
         created = self.pk is None
         super().save(*args, **kwargs)
         if created:
+            # generate rendition files on create
             transaction.on_commit(lambda: generate_media_rendition.delay(self.pk))
 
     @property

@@ -3,7 +3,7 @@ import os
 import calendar
 import datetime
 
-from django.db.models.fields.files import FieldFile
+from wagtail_to_ion.fields.files import IonFieldFile
 
 
 class TarWriter:
@@ -22,9 +22,8 @@ class TarWriter:
         with open(filename.encode("utf-8"), "rb") as fp:
             self.write_padded(fp.read())
 
-    def add_file_from_storage(self, file: FieldFile, archive_filename: str):
-        last_mod = file.storage.modified_time(file.name)  # naive datetime
-        self.write_header(archive_filename, file.size, date=last_mod)
+    def add_file_from_storage(self, file: IonFieldFile, archive_filename: str):
+        self.write_header(archive_filename, file.size, date=file.last_modified)
         with file.open('rb') as fp:
             self.write_padded(fp.read())
 
