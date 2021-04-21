@@ -182,48 +182,24 @@ class AbstractIonMedia(AbstractMedia):
         abstract = True
 
     def save(self, *args, **kwargs):
-        skip_state_detection = kwargs.pop('skip_state_detection', False)  # True if fields have been set by a task
-
-        if skip_state_detection:
-            super().save(*args, **kwargs)
-            return
-
-        # handle audio files
-        if self.type == 'audio':
-            super().save(*args, **kwargs)
-            transaction.on_commit(lambda: get_audio_metadata.delay(self.pk))
-            return
-
-        # handle video files
-        needs_transcode = False
-        needs_thumbnail = False
-
-        if not self.pk:
-            needs_transcode = True
-            needs_thumbnail = True
-        else:
-            obj = self._meta.default_manager.get(pk=self.pk)
-
-            if obj.file != self.file:
-                needs_transcode = True
-                needs_thumbnail = True
-            elif obj.thumbnail != self.thumbnail:
-                if self.pk:  # thumbnail was manually changed
-                    if not self.thumbnail:  # thumbnail was reset
-                        needs_thumbnail = True
-
         super().save(*args, **kwargs)
 
-        if needs_thumbnail:
-            transaction.on_commit(lambda: generate_media_thumbnail.delay(self.pk))
-
-        # remove all renditions and generate new ones
-        if needs_transcode:
-            self.create_renditions()
+        if self.file.has_changed:
+            if self.type == 'audio':
+                self.set_audio_metadata()
+            elif self.type == 'video':
+                self.create_thumbnail()
+                self.create_renditions()
 
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
         return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
+
+    def set_audio_metadata(self):
+        transaction.on_commit(lambda: get_audio_metadata.delay(self.pk))
+
+    def create_thumbnail(self):
+        transaction.on_commit(lambda: generate_media_thumbnail.delay(self.pk))
 
     def create_renditions(self):
         is_video_file = self.mime_type.startswith('video/')

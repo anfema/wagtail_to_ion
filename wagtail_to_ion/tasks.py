@@ -1,7 +1,6 @@
 # Copyright © 2019 anfema GmbH. All rights reserved.
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Tuple
@@ -21,17 +20,14 @@ if TYPE_CHECKING:
 BUFFER_SIZE = 64 * 1024
 
 
-def new_empty_thumbnail(suffix) -> Tuple[str, ContentFile]:
+def new_empty_thumbnail(suffix) -> ContentFile:
     data = bytes.fromhex('''
         ffd8ffdb0043000302020202020302020203030303040604040404040806
         06050609080a0a090809090a0c0f0c0a0b0e0b09090d110d0e0f10101110
         0a0c12131210130f101010ffc9000b080001000101011100ffcc00060010
         1005ffda0008010100003f00d2cf20ffd9
     ''')
-    thumbnail_name = 'blank-{}.jpg'.format(suffix)
-    sha256 = hashlib.sha256(data)
-
-    return f'sha256:{sha256.hexdigest()}', ContentFile(data, name=thumbnail_name)
+    return ContentFile(data, name=f'blank-{suffix}.jpg')
 
 
 def setup_work_dir(file: FieldFile) -> Tuple[TemporaryDirectory, Path]:
@@ -57,7 +53,6 @@ def setup_work_dir(file: FieldFile) -> Tuple[TemporaryDirectory, Path]:
 def generate_media_thumbnail(media_id: int):
     """Generate thumbnail from video and set media metadata."""
     from wagtail_to_ion.models import get_ion_media_model
-    from wagtail_to_ion.models.file_based_models import get_file_metadata
 
     media: AbstractIonMedia = get_ion_media_model().objects.get(pk=media_id)
     work_dir, source_file_path = setup_work_dir(media.file)
@@ -69,18 +64,15 @@ def generate_media_thumbnail(media_id: int):
         metadata = ffmpeg_jobs.extract_video_metadata(source_file_path)
         ffmpeg_jobs.extract_video_thumbnail(source_file_path, thumbnail_path)
         media.thumbnail.save(name=thumbnail_filename, content=File(thumbnail_path.open('rb')), save=False)
-        media.thumbnail_checksum, media.thumbnail_mime_type = get_file_metadata(File(thumbnail_path.open('rb')))
         media.width = metadata.width
         media.height = metadata.height
         media.duration = metadata.duration
-        media.save(skip_state_detection=True)
+        media.save()
     except ffmpeg_jobs.CodecProcessError:
         if not media.thumbnail:
-            checksum, empty_thumbnail = new_empty_thumbnail(media.pk)
+            empty_thumbnail = new_empty_thumbnail(media.pk)
             media.thumbnail.save(name=empty_thumbnail.name, content=empty_thumbnail, save=False)
-            media.thumbnail_checksum = checksum
-            media.thumbnail_mime_type = 'image/jpeg'
-            media.save(skip_state_detection=True)
+            media.save()
     finally:
         work_dir.cleanup()
 
@@ -89,7 +81,6 @@ def generate_media_thumbnail(media_id: int):
 def generate_media_rendition(rendition_id: int):
     """Generate rendition from video media."""
     from wagtail_to_ion.models import get_ion_media_rendition_model
-    from wagtail_to_ion.models.file_based_models import get_file_metadata
 
     rendition: AbstractIonMediaRendition = get_ion_media_rendition_model().objects.get(id=rendition_id)
     work_dir, source_file_path = setup_work_dir(rendition.media_item.file)
@@ -109,10 +100,7 @@ def generate_media_rendition(rendition_id: int):
         rendition.file.save(rendition_filename, File(rendition_path.open('rb')), save=False)
         rendition.width = rendition_metadata.width
         rendition.height = rendition_metadata.height
-        rendition.checksum, _ = get_file_metadata(File(rendition_path.open('rb')), detect_mime_type=False)
-
         rendition.thumbnail.save(thumbnail_filename, File(thumbnail_path.open('rb')), save=False)
-        rendition.thumbnail_checksum, _ = get_file_metadata(File(thumbnail_path.open('rb')), detect_mime_type=False)
         rendition.transcode_finished = True
         rendition.save()
     except ffmpeg_jobs.CodecProcessError as e:
@@ -125,8 +113,6 @@ def generate_media_rendition(rendition_id: int):
 @shared_task
 def regenerate_rendition_thumbnail(rendition: AbstractIonMediaRendition):
     """Regenerate media rendition thumbnail."""
-    from wagtail_to_ion.models.file_based_models import get_file_metadata
-
     work_dir, source_file_path = setup_work_dir(rendition.file)
 
     thumbnail_filename = Path(rendition.thumbnail.name).name
@@ -135,7 +121,6 @@ def regenerate_rendition_thumbnail(rendition: AbstractIonMediaRendition):
     try:
         ffmpeg_jobs.extract_video_thumbnail(source_file_path, thumbnail_path)
         rendition.thumbnail.save(thumbnail_filename, File(thumbnail_path.open('rb')), save=False)
-        rendition.thumbnail_checksum, _ = get_file_metadata(File(thumbnail_path.open('rb')), detect_mime_type=False)
         rendition.save()
     except ffmpeg_jobs.CodecProcessError as e:
         rendition.transcode_errors = str(e)
@@ -154,7 +139,7 @@ def get_audio_metadata(media_id: int):
     try:
         mediainfo = ffmpeg_jobs.extract_audio_metadata(source_file_path)
         media.duration = mediainfo.duration
-        media.save(skip_state_detection=True)
+        media.save()
     except ffmpeg_jobs.CodecProcessError:
         pass
     finally:
