@@ -1,8 +1,12 @@
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 
+from wagtail_to_ion.fields.files import IonFieldFile
 from wagtail_to_ion.models import get_ion_document_model, get_ion_image_model, get_ion_media_model, \
     get_ion_media_rendition_model
+
+
+# PR #25 adds new fields to file based models; run this command to set the fields on existing records.
 
 
 def set_file_metadata():
@@ -20,7 +24,7 @@ def set_file_metadata():
         IonMedia: ('file', 'thumbnail'),
         IonMediaRendition: ('file', 'thumbnail'),
     }
-    file_field_map = {
+    qs_file_field_map = {
         'file': ('file_size', 'file_last_modified'),
         'thumbnail': ('thumbnail_file_size', 'thumbnail_file_last_modified'),
     }
@@ -28,7 +32,7 @@ def set_file_metadata():
     for model, file_fields in model_file_field_map.items():
         qs_filter = Q()
         for file_field in file_fields:
-            for file_meta_field in file_field_map[file_field]:
+            for file_meta_field in qs_file_field_map[file_field]:
                 qs_filter |= Q(**{f'{file_meta_field}__isnull': True})
         qs = model.objects.filter(qs_filter)
 
@@ -38,21 +42,26 @@ def set_file_metadata():
         for obj in qs.iterator():
             failed = False
             for file_field in file_fields:
-                file = getattr(obj, file_field)
-                for file_meta_field in file_field_map[file_field]:
-                    if file_meta_field.endswith('file_size'):
-                        try:
-                            setattr(obj, file_meta_field, file.size)
-                        except Exception:  # noqa
-                            failed = True
-                    if file_meta_field.endswith('file_last_modified'):
-                        try:
-                            setattr(obj, file_meta_field, file.storage.get_modified_time(file.name))
-                        except Exception:  # noqa
-                            failed = True
-
+                file: IonFieldFile = getattr(obj, file_field)
+                try:
+                    # check if the value of any file meta field is missing (the value is automatically set by
+                    # IonFileField/IonImageField on model instance init if the file is available)
+                    failed = not all([
+                        file.checksum,
+                        file.mime_type,
+                        file.size,
+                        file.last_modified,
+                    ])
+                except ValueError:
+                    failed = True
+                if failed:
+                    break
             if not failed:
+                updated_at = getattr(obj, 'updated_at', None)
                 obj.save()
+                # restore `updated_at` field
+                if hasattr(obj, 'updated_at'):
+                    model.objects.filter(pk=obj.pk).update(updated_at=updated_at)
             else:
                 total_failed += 1
             total += 1
@@ -64,7 +73,6 @@ class Command(BaseCommand):
     help = 'Set file size & last modification time on file based models'
 
     def add_arguments(self, parser):
-        # TODO? add retry flag (operate on entries with file_size=0 | file_last_modified=1970-01-01)
         pass
 
     def handle(self, *args, **options):
