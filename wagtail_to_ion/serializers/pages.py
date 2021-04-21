@@ -1,5 +1,4 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
-import os
 import re
 from datetime import datetime, date
 from typing import Iterable, Tuple
@@ -117,14 +116,19 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
         archive = content_data.archive_rendition
         content['type'] = 'imagecontent'
         try:
-            content['mime_type'] = archive.mime_type
+            content['mime_type'] = archive.file.mime_type
             content['image'] = settings.BASE_URL + archive.file.url
-            content['file_size'] = archive.file.file.size
+            content['file_size'] = archive.file.size
             content['original_image'] = settings.BASE_URL + content_data.file.url
-            content['checksum'] = archive.checksum
-            content['width'] = archive.width
-            content['height'] = archive.height
-        except (ValueError, AttributeError) as e:
+            content['checksum'] = archive.file.checksum
+            content['width'] = archive.file.width
+            content['height'] = archive.file.height
+            content['original_mime_type'] = content_data.file.mime_type
+            content['original_checksum'] = content_data.file.checksum
+            content['original_width'] = content_data.file.width
+            content['original_height'] = content_data.file.height
+            content['original_file_size'] = content_data.file.size
+        except Exception as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
                 content['mime_type'] = 'application/x-empty'
                 content['image'] = 'IMAGE_MISSING'
@@ -133,14 +137,14 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
                 content['checksum'] = 'null:'
                 content['width'] = 0
                 content['height'] = 0
+                content['original_mime_type'] = 'application/x-empty'
+                content['original_checksum'] = 'null:'
+                content['original_width'] = 0
+                content['original_height'] = 0
+                content['original_file_size'] = 0
             else:
                 raise e
 
-        content['original_mime_type'] = content_data.mime_type
-        content['original_checksum'] = content_data.checksum
-        content['original_width'] = content_data.width
-        content['original_height'] = content_data.height
-        content['original_file_size'] = content_data.get_file_size()
         content['translation_x'] = 0
         content['translation_y'] = 0
         content['scale'] = 1.0
@@ -174,18 +178,20 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
             content['outlet'] = fieldname
     elif isinstance(content_data, AbstractIonDocument):
         content['type'] = 'filecontent'
-        content['mime_type'] = content_data.mime_type
         content['name'] = content_data.title
         try:
             content['file'] = settings.BASE_URL + content_data.file.url
             content['file_size'] = content_data.file.size
-        except FileNotFoundError as e:
+            content['checksum'] = content_data.file.checksum
+            content['mime_type'] = content_data.file.mime_type
+        except Exception as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
                 content['file'] = 'FILE_MISSING'
                 content['file_size'] = 0
+                content['checksum'] = 'null:'
+                content['mime_type'] = 'application/x-empty'
             else:
                 raise e
-        content['checksum'] = content_data.checksum
         if streamfield:
             content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
         else:
@@ -214,7 +220,7 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
         media_slot['type'] = 'mediacontent'
         thumbnail_slot['type'] = 'imagecontent'
 
-        if os.path.exists(content_data.file.path):
+        if content_data.file.storage.exists(content_data.file.name):
             if content_data.type == 'audio':
                 media_slot['mime_type'] = content_data.mime_type
                 media_slot['file'] = settings.BASE_URL + content_data.file.url
