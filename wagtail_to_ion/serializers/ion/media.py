@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import List, Any, Union, Dict, Optional
-import os
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models.file_based_models import AbstractIonMedia
@@ -126,7 +125,7 @@ class IonMediaSerializer(IonSerializer):
     def serialize(self) -> Optional[Dict[str, Any]]:
         container = IonContainerSerializer('mediacontainer_' + self.name, subtype='media')
 
-        if os.path.exists(self.data.file.path):
+        if self.data.file.storage.exists(self.data.file.name):
             if self.data.type == 'audio':
                 container.children.append(IonAudioSerializer('audio', self.data))
             else:

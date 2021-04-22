@@ -19,19 +19,21 @@ class IonDocumentSerializer(IonSerializer):
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
         result['type'] = 'filecontent'
-
-        result['mime_type'] = self.data.mime_type
         result['name'] = self.data.title
+
         try:
             result['file'] = settings.BASE_URL + self.data.file.url
             result['file_size'] = self.data.file.size
-        except FileNotFoundError as e:
+            result['checksum'] = self.data.file.checksum
+            result['mime_type'] = self.data.file.mime_type
+        except Exception as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
                 result['file'] = 'FILE_MISSING'
                 result['file_size'] = 0
+                result['checksum'] = 'null:'
+                result['mime_type'] = 'application/x-empty'
             else:
                 raise e
-        result['checksum'] = self.data.checksum
 
         return result
 
