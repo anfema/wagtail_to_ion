@@ -1,4 +1,6 @@
 <input type="range" multiple name="{{ widget.name }}" min="{{ widget.rangemin }}" max="{{ widget.rangemax }}" {% if widget.minvalue != None %} value="{{ widget.minvalue|stringformat:'s' }},{{ widget.maxvalue|stringformat:'s' }}"{% endif %}{% include "django/forms/widgets/attrs.html" %}>
+<input type="range" multiple data-ghost="" name="{{ widget.name }}_ghost" min="{{ widget.rangemin }}" max="{{ widget.rangemax }}" {% if widget.minvalue != None %} value="{{ widget.minvalue|stringformat:'s' }},{{ widget.maxvalue|stringformat:'s' }}"{% endif %}{% include "django/forms/widgets/attrs.html" %}>
+{% comment %}<input type="range" multiple data-middle="" name="{{ widget.name }}_middle" min="{{ widget.rangemin }}" max="{{ widget.rangemax }}" {% if widget.minvalue != None %} value="{{ widget.minvalue|stringformat:'s' }},{{ widget.maxvalue|stringformat:'s' }}"{% endif %}{% include "django/forms/widgets/attrs.html" %}>{% endcomment %}
 <input type="hidden" name="{{ widget.name }}_low" value="{% if widget.minvalue != None %}{{ widget.minvalue|stringformat:'s' }}{% endif %}">
 <input type="hidden" name="{{ widget.name }}_high" value="{% if widget.maxvalue != None %}{{ widget.maxvalue|stringformat:'s' }}{% endif %}">
 
