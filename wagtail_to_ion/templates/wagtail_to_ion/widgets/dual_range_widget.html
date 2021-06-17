@@ -60,7 +60,7 @@ to
 
     document.addEventListener("DOMContentLoaded", () => {
         window.setTimeout(() => {
-            const {{ widget.name }}_widgets = document.getElementsByName('{{ widget.name }}');
+            const {{ widget.name }}_widgets = document.getElementsByName('{{ widget.name }}_ghost');
 
             {{ widget.name }}_widgets.forEach(item => {
                 item.addEventListener('change', {{ widget.name }}_onchange);
@@ -78,7 +78,7 @@ to
                     obj.valueHigh = 0;
                 {% endif %}
                 const event = new Event('change');
-                obj.dispatchEvent(event);
+                document.getElementsByName('{{ widget.name }}_ghost')[0].dispatchEvent(event);
                 e.preventDefault();
             }
         }, 200);
