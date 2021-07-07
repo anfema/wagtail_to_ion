@@ -259,7 +259,7 @@ class DynamicPageSerializer(serializers.ModelSerializer):
         return obj.slug
 
     def get_last_changed(self, obj):
-        return isoDate(obj.latest_revision_created_at)  # FIXME: Is this correct? Should this be last_published instead?
+        return isoDate(obj.last_published_at)
 
     def get_layout(self, obj):
         ct = ContentType.objects.get_for_id(obj.content_type_id)
