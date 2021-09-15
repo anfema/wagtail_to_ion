@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand, CommandError
 
 from wagtail_to_ion.models import get_ion_media_model, get_ion_media_rendition_model
-from wagtail_to_ion.tasks import generate_rendition_thumbnail, generate_media_thumbnail
+from wagtail_to_ion.tasks import regenerate_rendition_thumbnail, generate_media_thumbnail
 
 
 IonMedia = get_ion_media_model()
@@ -16,14 +16,11 @@ def update_video_thumbnails(media_id=None):
 
 	for item in items:
 		print('Regenerating thumbnails for {} (id: {})'.format(item.title, item.id))
-		first = True
+		generate_media_thumbnail(item.pk)
 		for rendition in IonMediaRendition.objects.filter(media_item_id=item.id, transcode_finished=True):
 			try:
-				if first is True:
-					generate_media_thumbnail(rendition)
-					first = False
 				print(' - Rendition {}...'.format(rendition.name))
-				generate_rendition_thumbnail(rendition)
+				regenerate_rendition_thumbnail(rendition)
 			except Exception as e:
 				print(' - Failed rendering {}: {}'.format(rendition.name, str(e)))
 
