@@ -30,7 +30,7 @@ else:
         return request.build_absolute_uri(url) + "?variation={}".format(variation)
 
 
-def collect_files(request, self, page, collected_files, user):
+def collect_files(request, page, collected_files, user):
     for _, field_name, instance in get_wagtail_panels_and_extra_fields(page):
         sub_field = getattr(instance, field_name)
         if sub_field.__class__.__name__ in ['IonDocument', 'IonMedia'] and sub_field.include_in_archive:
@@ -64,7 +64,11 @@ def collect_files(request, self, page, collected_files, user):
                 item['url'] = key
                 item['page'] = page.slug
                 item['checksum'] = file.checksum
-                item['path'] = file.file.path
+                try:
+                    item['path'] = file.file.path
+                except NotImplementedError:
+                    item['path'] = None
+                item['file'] = file.file
                 collected_files.append(item)
 
 
@@ -135,7 +139,7 @@ def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSer
 
     # collect all files
     collected_files = []
-    collect_files(request, page, page, collected_files, user)
+    collect_files(request, page, collected_files, user)
     i = {}
     for f in collected_files:
         if f["page"] not in i:
@@ -168,7 +172,7 @@ def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSer
 
     # add all files
     for f in collected_files:
-        tar.add_file(f['path'], f['tar_name'])
+        tar.add_file_from_storage(f['file'], f['tar_name'])
 
     return tar.data()
 
@@ -213,7 +217,7 @@ def make_tar(pages, updated_pages, locale_code, request, content_serializer=Dyna
 
     # add all files
     for f in collected_files:
-        tar.add_file(f['path'], f['tar_name'])
+        tar.add_file_from_storage(f['file'], f['tar_name'])
 
     return tar.data()
 
@@ -232,7 +236,7 @@ def make_pagemeta(page, locale_code, request):
 
     # collect all files
     collected_files = []
-    collect_files(request, page, page, collected_files, user)
+    collect_files(request, page, collected_files, user)
     i = {}
     for f in collected_files:
         if f["page"] not in i:

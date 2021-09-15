@@ -107,11 +107,18 @@ def ion_publish_with_children(request, page_id):
         raise PermissionDenied
 
     revision = page.get_latest_revision()
-    unpublished_descendant_pages = page.get_descendants().filter(live=False).specific()
+    unpublished_descendant_pages = page.get_descendants().not_live()
+    has_unpublished_alias_pages = unpublished_descendant_pages.filter(alias_of__isnull=False).exists()
+
+    if has_unpublished_alias_pages:
+        messages.error(request, "The page has unpublished alias subpages. Please publish the original page(s) first.")
 
     next_url = get_valid_next_url_from_request(request)
 
     if request.method == 'POST':
+        if has_unpublished_alias_pages:
+            return redirect(next_url) if next_url else redirect('wagtailadmin_explore', page.get_parent().id)
+
         revision.publish()
 
         for unpublished_descendant_page in unpublished_descendant_pages:
@@ -128,7 +135,8 @@ def ion_publish_with_children(request, page_id):
         'page': page,
         'next': next_url,
         'unpublished_descendants': unpublished_descendant_pages,
-        'unpublished_descendant_count': page.get_descendants().not_live().count(),
+        'unpublished_descendant_count': unpublished_descendant_pages.count(),
+        'has_unpublished_alias_pages': has_unpublished_alias_pages,
     })
 
 
