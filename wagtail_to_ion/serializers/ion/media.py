@@ -45,11 +45,7 @@ class IonVideoSerializer(IonSerializer):
     def __init__(self, name: str, data: AbstractIonMedia) -> None:
         super().__init__(name)
         self.data = data
-        rendition = data.renditions.filter(transcode_finished=True).first()
-        if rendition is None:
-            self.rendition = data
-        else:
-            self.rendition = rendition
+        self.rendition = data.archive_rendition or data
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
@@ -83,11 +79,7 @@ class IonVideoThumbnailSerializer(IonSerializer):
     def __init__(self, name: str, data: AbstractIonMedia) -> None:
         super().__init__(name)
         self.data = data
-        rendition = data.renditions.filter(transcode_finished=True).first()
-        if rendition is None:
-            self.rendition = data
-        else:
-            self.rendition = rendition
+        self.rendition = data.archive_rendition or data
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()

@@ -191,6 +191,10 @@ class AbstractIonMedia(AbstractMedia):
                 self.create_thumbnail()
                 self.create_renditions()
 
+    @property
+    def archive_rendition(self) -> Optional[AbstractIonMediaRendition]:
+        return self.renditions.filter(transcode_finished=True).first()
+
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
         return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
