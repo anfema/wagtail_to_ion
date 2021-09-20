@@ -29,5 +29,9 @@ class IonNumberSerializer(IonSerializer):
     def supported_types(cls) -> List[T]:
         return [int, float, Decimal]
 
+    @classmethod
+    def can_serialize(cls, data: Any) -> bool:
+        return not isinstance(data, bool)  # don't handle `bool` (which is a subclass of `int`)
+
 
 IonSerializer.register(IonNumberSerializer)
