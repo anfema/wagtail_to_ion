@@ -1,10 +1,8 @@
 from __future__ import annotations
-from typing import List
-
-from wagtail_to_ion.serializers.ion.container import IonContainerSerializer
+from typing import List, Type
 
 from wagtail.core.blocks import StreamValue, StructValue
-from .base import IonSerializer, T
+from .base import IonSerializer
 from .container import IonContainerSerializer
 
 
@@ -24,7 +22,7 @@ class IonStreamValueSerializer(IonContainerSerializer):
             child.index = idx
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [StreamValue]
 
 
@@ -44,7 +42,7 @@ class IonStructValueSerializer(IonContainerSerializer):
             self.add_child(item_name, sub_data.value)
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [StructValue]
 
 

@@ -1,9 +1,9 @@
 from __future__ import annotations
-from typing import List, Any, Union, Dict, Optional
+from typing import List, Any, Dict, Optional, Type
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models.file_based_models import AbstractIonMedia
-from .base import IonSerializer, T
+from .base import IonSerializer
 from .container import IonContainerSerializer
 
 
@@ -19,6 +19,8 @@ class IonAudioSerializer(IonSerializer):
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
+        if result is None:
+            return None
         result.update({
             'type': 'mediacontent',
             'mime_type': self.data.mime_type,
@@ -49,6 +51,8 @@ class IonVideoSerializer(IonSerializer):
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
+        if result is None:
+            return None
         result.update({
             'type': 'mediacontent',
             'mime_type': self.data.mime_type,
@@ -83,6 +87,8 @@ class IonVideoThumbnailSerializer(IonSerializer):
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
+        if result is None:
+            return None
         result.update({
             'type': 'imagecontent',
             'mime_type': self.data.thumbnail_mime_type,
@@ -127,7 +133,7 @@ class IonMediaSerializer(IonSerializer):
         return container.serialize()
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [AbstractIonMedia]
 
 

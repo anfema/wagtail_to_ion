@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import List, Any, Optional, Union, Dict
+from typing import List, Any, Optional, Dict, Type
 from collections.abc import Iterable
 
-from .base import IonSerializer, IonSerializationError, T
+from .base import IonSerializer, IonSerializationError
 
 
 class IonContainerSerializer(IonSerializer):
@@ -34,6 +34,8 @@ class IonContainerSerializer(IonSerializer):
         Serialize the container recursively into a simple ``dict``
         """
         result = super().serialize()
+        if result is None:
+            return None
         resulting_children = []
         for child in self.children:
             resulting_child = child.serialize()
@@ -76,7 +78,8 @@ class IonListSerializer(IonContainerSerializer):
             child.index = idx
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [Iterable]
+
 
 IonSerializer.register(IonListSerializer)

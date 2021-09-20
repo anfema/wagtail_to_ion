@@ -1,18 +1,19 @@
 from __future__ import annotations
-from typing import List, Any, Union, Dict, Optional
+from typing import List, Any, Union, Dict, Optional, Type
 
 import re
 from bs4 import BeautifulSoup
 
 from wagtail.core.rich_text import RichText
 
-from .base import IonSerializer, T
+from .base import IonSerializer
 
 
 replacements = [
     (re.compile(r'<p>\s*(<br/?>)*</p>'), ''),  # All empty paragraphs filled only with whitespace or <br> tags
     (re.compile(r'<br/?>\s*</li>'), '</li>')   # All lists that end with a <br> tag before the closing </li>
 ]
+
 
 def parse_correct_html(content_type):
     content = str(content_type)
@@ -44,6 +45,8 @@ class IonTextSerializer(IonSerializer):
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
+        if result is None:
+            return None
         result.update({
             'type': 'textcontent',
             'is_multiline': self.is_html,
@@ -53,7 +56,7 @@ class IonTextSerializer(IonSerializer):
         return result
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [str, RichText]
 
 
