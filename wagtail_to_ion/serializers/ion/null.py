@@ -1,7 +1,7 @@
 from __future__ import annotations
-from typing import List, Any, Union, Dict, Optional
+from typing import List, Any, Dict, Optional, Type
 
-from .base import IonSerializer, T
+from .base import IonSerializer
 
 
 class IonNoneSerializer(IonSerializer):
@@ -19,7 +19,7 @@ class IonNoneSerializer(IonSerializer):
         return None
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [type(None)]
 
 

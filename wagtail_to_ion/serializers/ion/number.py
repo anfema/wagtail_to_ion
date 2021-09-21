@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import List, Any, Union, Dict, Optional
+from typing import List, Any, Union, Dict, Optional, Type
 from decimal import Decimal
 
-from .base import IonSerializer, T
+from .base import IonSerializer
 
 
 class IonNumberSerializer(IonSerializer):
@@ -19,6 +19,8 @@ class IonNumberSerializer(IonSerializer):
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
+        if result is None:
+            return None
         result.update({
             'type': 'numbercontent',
             'value': self.data,
@@ -26,7 +28,7 @@ class IonNumberSerializer(IonSerializer):
         return result
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [int, float, Decimal]
 
     @classmethod

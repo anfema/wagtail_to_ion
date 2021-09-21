@@ -1,7 +1,7 @@
 from __future__ import annotations
-from typing import List, Any, Union, Dict, Optional
+from typing import List, Any, Dict, Optional, Type
 
-from .base import IonSerializer, T
+from .base import IonSerializer
 
 
 class IonTableSerializer(IonSerializer):
@@ -27,6 +27,8 @@ class IonTableSerializer(IonSerializer):
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
+        if result is None:
+            return None
         result.update({
             'type': 'tablecontent',
             'cells': self.data['data'],
@@ -36,7 +38,7 @@ class IonTableSerializer(IonSerializer):
         return result
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [dict]
 
     @classmethod

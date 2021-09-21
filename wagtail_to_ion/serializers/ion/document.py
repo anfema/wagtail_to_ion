@@ -1,9 +1,9 @@
 from __future__ import annotations
-from typing import List, Any, Union, Dict, Optional
+from typing import List, Any, Dict, Optional, Type
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models.file_based_models import AbstractIonDocument
-from .base import IonSerializer, T
+from .base import IonSerializer
 
 
 class IonDocumentSerializer(IonSerializer):
@@ -18,6 +18,8 @@ class IonDocumentSerializer(IonSerializer):
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
+        if result is None:
+            return None
         result['type'] = 'filecontent'
         result['name'] = self.data.title
 
@@ -38,7 +40,7 @@ class IonDocumentSerializer(IonSerializer):
         return result
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [AbstractIonDocument]
 
 

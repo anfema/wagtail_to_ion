@@ -1,9 +1,7 @@
 from __future__ import annotations
-from typing import List, Any, TypeVar, Union, Dict, ClassVar, Optional
+from typing import List, Any, Dict, ClassVar, Optional, Type, Deque
 from collections import deque
 import json
-
-T = TypeVar('T')
 
 
 class IonSerializationError(Exception):
@@ -20,7 +18,7 @@ class IonSerializer:
     to register new serializers for new types.
     """
 
-    registry: ClassVar[deque] = deque()  # This is the serializer registry
+    registry: ClassVar[Deque[Type[IonSerializer]]] = deque()  # This is the serializer registry
 
     def __init__(self, name: str) -> None:
         """
@@ -57,7 +55,7 @@ class IonSerializer:
         return json.dumps(self.serialize())
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         """
         Subclasses will return the classes of data they can serialize (e.g. ``str`` or ``int`` or custom classes)
         """
@@ -72,7 +70,7 @@ class IonSerializer:
         return True
 
     @classmethod
-    def find_serializer(cls, target: T, data: Optional[Any]=None) -> IonSerializer:
+    def find_serializer(cls, target: Any, data: Optional[Any] = None) -> Optional[Type[IonSerializer]]:
         """
         This finds a serializer for a target data type. Optionally you can give the function the object
         that is to be serialized to run a sanity check on the data before even initializing the serializer.
@@ -88,7 +86,7 @@ class IonSerializer:
         return None
 
     @classmethod
-    def register(cls, serializer: IonSerializer) -> None:
+    def register(cls, serializer: Type[IonSerializer]) -> None:
         """
         Use this function to register a new serializer class with the system. The serializer will be
         picked automatically when the ``supported_types`` and the ``can_serialize`` checks pass.
