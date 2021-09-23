@@ -16,8 +16,8 @@ class IonPageSerializer(IonSerializer):
     and collection only.
     """
 
-    def __init__(self, name: str, data: Union[AbstractIonPage, Page]) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: Union[AbstractIonPage, Page], **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:

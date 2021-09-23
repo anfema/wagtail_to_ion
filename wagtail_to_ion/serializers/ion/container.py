@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Any, Optional, Dict, Type
+from typing import List, Any, Optional, Dict, Type, Mapping
 from collections.abc import Iterable
 
 from .base import IonSerializer, IonSerializationError
@@ -13,7 +13,13 @@ class IonContainerSerializer(IonSerializer):
     See the ``add_child`` function to run the automatic type detection on a child item.
     """
 
-    def __init__(self, name: str, subtype: Optional[str]=None, children: Optional[List[IonSerializer]]=None) -> None:
+    def __init__(
+        self,
+        name: str,
+        subtype: Optional[str] = None,
+        children: Optional[List[IonSerializer]] = None,
+        **kwargs,
+    ) -> None:
         """
         Initialize a new container content.
 
@@ -22,7 +28,7 @@ class IonContainerSerializer(IonSerializer):
                         ``structblock`` or ``list``, defaults to ``generic``
         :param children: optional, the child-serializer items to append initially, leave out for an empty list
         """
-        super().__init__(name)
+        super().__init__(name, **kwargs)
         self.subtype = subtype
         if children is not None:
             self.children = children
@@ -49,14 +55,14 @@ class IonContainerSerializer(IonSerializer):
         })
         return result
 
-    def add_child(self, name: str, item: Any) -> IonSerializer:
+    def add_child(self, name: str, item: Any, context: Optional[Mapping] = None) -> IonSerializer:
         """
         Add a child to a container with auto-type detection over all registered serializers
         """
         serializer = IonSerializer.find_serializer(item.__class__, data=item)
         if serializer is None:
             raise IonSerializationError('No serializer found for type "{}"'.format(item.__class__.__name__))
-        wrapped_item = serializer(name, item)
+        wrapped_item = serializer(name, item, context=context, parent=self)
         self.children.append(wrapped_item)
         return wrapped_item
 
@@ -71,8 +77,8 @@ class IonListSerializer(IonContainerSerializer):
     from the list of registered serializers
     """
 
-    def __init__(self, name:str, data: List[Any]) -> None:
-        super().__init__(name, subtype='list')
+    def __init__(self, name: str, data: List[Any], **kwargs) -> None:
+        super().__init__(name, subtype='list', **kwargs)
         for idx, item in enumerate(data):
             child = self.add_child(name + "_item", item)
             child.index = idx

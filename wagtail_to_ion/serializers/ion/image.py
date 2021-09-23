@@ -12,8 +12,8 @@ class IonImageSerializer(IonSerializer):
     this serializer if you use a ``IonImage`` class that has additional properties
     """
 
-    def __init__(self, name: str, data: AbstractIonImage) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: AbstractIonImage, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
         self.archive = data.archive_rendition
 

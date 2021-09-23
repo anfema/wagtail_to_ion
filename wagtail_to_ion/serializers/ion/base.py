@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import List, Any, Dict, ClassVar, Optional, Type, Deque
+
+import weakref
+from typing import List, Any, Dict, ClassVar, Optional, Type, Deque, Mapping
 from collections import deque
 import json
 
@@ -20,7 +22,19 @@ class IonSerializer:
 
     registry: ClassVar[Deque[Type[IonSerializer]]] = deque()  # This is the serializer registry
 
-    def __init__(self, name: str) -> None:
+    name: str
+    index: Optional[int]
+
+    _context: Optional[Mapping] = None
+    _parent = None  # type: weakref.ReferenceType[IonSerializer]
+
+    def __init__(
+        self,
+        name: str,
+        *args,
+        context: Optional[Mapping] = None,
+        parent: Optional[IonSerializer] = None,
+    ) -> None:
         """
         By default we only take a name to initialize a serializer (this maps to the outlet name),
         but this will be expanded with a second parameter ``data`` for all subclasses to take the
@@ -28,6 +42,10 @@ class IonSerializer:
         """
         self.name = name  # Outlet name
         self.index = None  # Set to a value to serialize an ``index`` attribute into the output
+        if context is not None:
+            self.context = context
+        if parent is not None:
+            self.parent = parent
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         """
@@ -53,6 +71,26 @@ class IonSerializer:
         Simple debugging function to test if we can serialize to json without problems
         """
         return json.dumps(self.serialize())
+
+    @property
+    def context(self) -> Mapping:
+        if self._context is not None:
+            return self._context
+        if self.parent is not None:
+            return self.parent.context
+        return {}
+
+    @context.setter
+    def context(self, context: Mapping) -> None:
+        self._context = context
+
+    @property
+    def parent(self) -> Optional[IonSerializer]:
+        return self._parent() if self._parent is not None else None
+
+    @parent.setter
+    def parent(self, parent: IonSerializer) -> None:
+        self._parent = weakref.ref(parent)
 
     @classmethod
     def supported_types(cls) -> List[Type]:

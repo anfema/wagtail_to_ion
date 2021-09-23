@@ -167,7 +167,11 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
 
     def build_tree(self, obj, request):
         # Create a top-level container
-        container = IonContainerSerializer('container_0')
+        context = {
+            'request': request,
+            'page': obj,
+        }
+        container = IonContainerSerializer('container_0', context=context)
 
         if obj is None:
             return container
@@ -183,7 +187,7 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         data = self.build_tree(obj, self.context.get('request', None))
         if data is None:
             return []
-        
+
         data = data.serialize()
 
         # optionally remap outlet names if needed (e.g. outlet should be called like a reserved word in python)

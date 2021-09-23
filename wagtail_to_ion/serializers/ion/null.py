@@ -12,8 +12,8 @@ class IonNoneSerializer(IonSerializer):
     datatype and returns something other in ``serialize``
     """
 
-    def __init__(self, name: str, data: None) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: None, **kwargs) -> None:
+        super().__init__(name, **kwargs)
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         return None
