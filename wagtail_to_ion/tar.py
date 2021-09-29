@@ -3,6 +3,8 @@ import os
 import calendar
 import datetime
 
+from django.conf import settings
+
 from wagtail_to_ion.fields.files import IonFieldFile
 
 
@@ -23,9 +25,16 @@ class TarWriter:
             self.write_padded(fp.read())
 
     def add_file_from_storage(self, file: IonFieldFile, archive_filename: str):
-        self.write_header(archive_filename, file.size, date=file.last_modified)
-        with file.open('rb') as fp:
-            self.write_padded(fp.read())
+        self.write_header(archive_filename, file.size or 0, date=file.last_modified)
+
+        try:
+            with file.open('rb') as fp:
+                self.write_padded(fp.read())
+        except Exception as e:
+            if settings.ION_ALLOW_MISSING_FILES:
+                pass
+            else:
+                raise
 
     def add_dir(self, archive_path, date=None):
         self.write_header(archive_path, 0, item_type=b'5', date=date)
@@ -62,7 +71,7 @@ class TarWriter:
         header += b"001750 \0"
 
         # size (12 bytes)
-        size_string = oct(size).encode("ascii")[2:]
+        size_string = oct(size or 0).encode("ascii")[2:]
         for i in range(len(size_string), 11):
             header += b"0"
         header += size_string
