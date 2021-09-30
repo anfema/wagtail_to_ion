@@ -1,9 +1,14 @@
 from __future__ import annotations
+
+import logging
 from typing import List, Any, Dict, Optional, Type
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models.file_based_models import AbstractIonImage
 from .base import IonSerializer
+
+
+logger = logging.getLogger(__name__)
 
 
 class IonImageSerializer(IonSerializer):
@@ -38,6 +43,12 @@ class IonImageSerializer(IonSerializer):
             result['original_file_size'] = self.data.file.size
         except Exception as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
+                log_extra = {
+                    'image_filename': self.data.file.name,
+                    'rendition_filename': self.archive.file.name if self.archive else None,
+                }
+                logger.warning('Skipped missing image or rendition file', extra=log_extra, exc_info=True)
+
                 result['mime_type'] = 'application/x-empty'
                 result['image'] = 'IMAGE_MISSING'
                 result['original_image'] = 'IMAGE_MISSING'

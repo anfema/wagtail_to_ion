@@ -1,9 +1,14 @@
 from __future__ import annotations
+
+import logging
 from typing import List, Any, Dict, Optional, Type
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models.file_based_models import AbstractIonDocument
 from .base import IonSerializer
+
+
+logger = logging.getLogger(__name__)
 
 
 class IonDocumentSerializer(IonSerializer):
@@ -30,6 +35,9 @@ class IonDocumentSerializer(IonSerializer):
             result['mime_type'] = self.data.file.mime_type
         except Exception as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
+                log_extra = {'document_filename': self.data.file.name}
+                logger.warning('Skipped missing document file', extra=log_extra, exc_info=True)
+
                 result['file'] = 'FILE_MISSING'
                 result['file_size'] = 0
                 result['checksum'] = 'null:'

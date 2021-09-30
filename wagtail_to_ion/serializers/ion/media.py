@@ -1,10 +1,15 @@
 from __future__ import annotations
+
+import logging
 from typing import List, Any, Dict, Optional, Type
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models.file_based_models import AbstractIonMedia
 from .base import IonSerializer
 from .container import IonContainerSerializer
+
+
+logger = logging.getLogger(__name__)
 
 
 class IonAudioSerializer(IonSerializer):
@@ -129,6 +134,9 @@ class IonMediaSerializer(IonSerializer):
             else:
                 container.children.append(IonVideoSerializer('video', self.data))
                 container.children.append(IonVideoThumbnailSerializer('video_thumbnail', self.data))
+        else:
+            log_extra = {'media_filename': self.data.file.name}
+            logger.warning('Skipped missing media file', extra=log_extra, exc_info=True)
 
         return container.serialize()
 
