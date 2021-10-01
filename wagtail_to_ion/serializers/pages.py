@@ -26,6 +26,8 @@ replacements = [
     (re.compile(r'<br/?>\s*</li>'), '</li>')   # All lists that end with a <br> tag before the closing </li>
 ]
 
+http_regex = re.compile(r'https?://.*')
+
 
 def get_stream_field_outlet_name(fieldname, block_type, count):
     return "{type}_{fieldname}_{count}".format(fieldname=fieldname, type=block_type, count=str(count))
@@ -66,6 +68,13 @@ def get_wagtail_panels_and_extra_fields(obj) -> Iterable[Tuple[str, str, models.
     for field in obj.specific.content_panels:
         if hasattr(field, 'field_name'):
             yield field.field_name, field.field_name, obj.specific
+
+
+def make_absolute_url(file):
+    if http_regex.match(file.url):
+        return file.url
+    else:
+        return settings.BASE_URL + file.url
 
 
 def parse_data(content_data, content, fieldname, *, content_field_meta=None, block_type=None, streamfield=False, count=None):
@@ -117,9 +126,9 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
         content['type'] = 'imagecontent'
         try:
             content['mime_type'] = archive.file.mime_type
-            content['image'] = settings.BASE_URL + archive.file.url
+            content['image'] = make_absolute_url(archive.file)
             content['file_size'] = archive.file.size
-            content['original_image'] = settings.BASE_URL + content_data.file.url
+            content['original_image'] = make_absolute_url(content_data.file)
             content['checksum'] = archive.file.checksum
             content['width'] = archive.file.width
             content['height'] = archive.file.height
@@ -180,7 +189,7 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
         content['type'] = 'filecontent'
         content['name'] = content_data.title
         try:
-            content['file'] = settings.BASE_URL + content_data.file.url
+            content['file'] = make_absolute_url(content_data.file)
             content['file_size'] = content_data.file.size
             content['checksum'] = content_data.file.checksum
             content['mime_type'] = content_data.file.mime_type
@@ -223,13 +232,13 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
         if content_data.file.storage.exists(content_data.file.name):
             if content_data.type == 'audio':
                 media_slot['mime_type'] = content_data.mime_type
-                media_slot['file'] = settings.BASE_URL + content_data.file.url
+                media_slot['file'] = make_absolute_url(content_data.file)
                 media_slot['checksum'] = content_data.checksum
                 media_slot['length'] = content_data.duration
                 media_slot['file_size'] = content_data.file.size
                 media_slot['name'] = content_data.title
                 media_slot['original_mime_type'] = content_data.mime_type
-                media_slot['original_file'] = settings.BASE_URL + content_data.file.url
+                media_slot['original_file'] = make_absolute_url(content_data.file)
                 media_slot['original_checksum'] = content_data.checksum
                 media_slot['original_length'] = content_data.duration
                 media_slot['original_file_size'] = content_data.file.size
@@ -239,7 +248,7 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
                 if rendition is None:
                     rendition = content_data
                 media_slot['mime_type'] = content_data.mime_type
-                media_slot['file'] = settings.BASE_URL + rendition.file.url
+                media_slot['file'] = make_absolute_url(rendition.file)
                 media_slot['checksum'] = rendition.checksum
                 media_slot['width'] = rendition.width if rendition.width else 0
                 media_slot['height'] = rendition.height if rendition.height else 0
@@ -247,7 +256,7 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
                 media_slot['file_size'] = rendition.file.size
                 media_slot['name'] = content_data.title
                 media_slot['original_mime_type'] = content_data.mime_type
-                media_slot['original_file'] = settings.BASE_URL + content_data.file.url
+                media_slot['original_file'] = make_absolute_url(content_data.file)
                 media_slot['original_checksum'] = content_data.checksum
                 media_slot['original_width'] = content_data.width if content_data.width else 0
                 media_slot['original_height'] = content_data.height if content_data.height else 0
@@ -256,13 +265,13 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
                 media_slot['outlet'] = 'video'
 
                 thumbnail_slot['mime_type'] = content_data.thumbnail_mime_type
-                thumbnail_slot['image'] = settings.BASE_URL + rendition.thumbnail.url
+                thumbnail_slot['image'] = make_absolute_url(rendition.thumbnail)
                 thumbnail_slot['checksum'] = rendition.thumbnail_checksum
                 thumbnail_slot['width'] = rendition.width
                 thumbnail_slot['height'] = rendition.height
                 thumbnail_slot['file_size'] = rendition.thumbnail.size
                 thumbnail_slot['original_mime_type'] = content_data.thumbnail_mime_type
-                thumbnail_slot['original_image'] = settings.BASE_URL + content_data.thumbnail.url
+                thumbnail_slot['original_image'] = make_absolute_url(content_data.thumbnail)
                 thumbnail_slot['original_checksum'] = content_data.thumbnail_checksum
                 thumbnail_slot['original_width'] = content_data.width
                 thumbnail_slot['original_height'] = content_data.height
