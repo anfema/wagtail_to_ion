@@ -14,17 +14,16 @@ var multirange = function(input) {
 	var values = value === null ? [] : value.split(",");
 	var min = +(input.min || 0);
 	var max = +(input.max || 100);
-	var ghost = input.cloneNode();
+	var ghost = input.parentNode.querySelector('[data-ghost]');
 	var dragMiddle = input.getAttribute("data-drag-middle") !== null;
 	var middle = input.cloneNode();
+	// var middle = input.parentNode.querySelector('[data-middle]');
 
 	input.classList.add("multirange", "original");
 	ghost.classList.add("multirange", "ghost");
 
 	input.value = values[0] || min + (max - min) / 2;
 	ghost.value = values[1] || min + (max - min) / 2;
-
-	input.parentNode.insertBefore(ghost, input.nextSibling);
 
 	Object.defineProperty(input, "originalValue", descriptor.get ? descriptor : {
 		// Fuck you Safari >:(

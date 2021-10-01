@@ -244,7 +244,7 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
                 media_slot['original_file_size'] = content_data.file.size
                 media_slot['outlet'] = 'audio'
             else:
-                rendition = content_data.renditions.filter(transcode_finished=True).first()
+                rendition = content_data.archive_rendition
                 if rendition is None:
                     rendition = content_data
                 media_slot['mime_type'] = content_data.mime_type

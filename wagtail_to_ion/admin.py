@@ -52,5 +52,5 @@ class AbstractIonCollectionAdmin(admin.ModelAdmin):
 
 class AbstractContentTypeDescriptionAdmin(admin.ModelAdmin):
     list_display = ('content_type', 'description')
-    search_fields = ('title',)
+    search_fields = ('content_type__model', 'description',)
     list_filter = ('content_type',)
