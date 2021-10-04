@@ -133,12 +133,12 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
             content['original_height'] = content_data.file.height
             content['original_file_size'] = content_data.file.size
         except Exception as e:
-            log_extra = {
-                'image_filename': content_data.file.name,
-                'rendition_filename': archive.file.name if archive else None,
-            }
-            logger.warning('Skipped missing image or rendition file', extra=log_extra, exc_info=True)
             if settings.ION_ALLOW_MISSING_FILES is True:
+                log_extra = {
+                    'image_filename': content_data.file.name,
+                    'rendition_filename': archive.file.name if archive else None,
+                }
+                logger.warning('Skipped missing image or rendition file', extra=log_extra, exc_info=True)
                 content['mime_type'] = 'application/x-empty'
                 content['image'] = 'IMAGE_MISSING'
                 content['original_image'] = 'IMAGE_MISSING'
@@ -283,8 +283,9 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
                 thumbnail_slot['scale'] = 1.0
                 thumbnail_slot['outlet'] = "video_thumbnail"
         else:
-            log_extra = {'media_filename': content_data.file.name}
-            logger.warning('Skipped missing media file', extra=log_extra, exc_info=True)
+            if settings.ION_ALLOW_MISSING_FILES is True:
+                log_extra = {'media_filename': content_data.file.name}
+                logger.warning('Skipped missing media file', extra=log_extra, exc_info=True)
 
         fill_contents(media_slot, media_container)
         fill_contents(thumbnail_slot, media_container)
