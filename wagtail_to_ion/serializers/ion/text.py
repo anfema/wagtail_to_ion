@@ -30,8 +30,8 @@ class IonTextSerializer(IonSerializer):
     a sanity check in there to fall back to this one just in case.
     """
 
-    def __init__(self, name: str, data: Union[str, RichText]) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: Union[str, RichText], **kwargs) -> None:
+        super().__init__(name, **kwargs)
 
         try:
             # check if text is html

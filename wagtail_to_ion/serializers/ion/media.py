@@ -18,8 +18,8 @@ class IonAudioSerializer(IonSerializer):
     with the registry as it handles only a part of a media object
     """
 
-    def __init__(self, name: str, data: AbstractIonMedia) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: AbstractIonMedia, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:
@@ -49,8 +49,8 @@ class IonVideoSerializer(IonSerializer):
     with the registry as it handles only a part of a media object
     """
 
-    def __init__(self, name: str, data: AbstractIonMedia) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: AbstractIonMedia, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
         self.rendition = data.archive_rendition or data
 
@@ -85,8 +85,8 @@ class IonVideoThumbnailSerializer(IonSerializer):
     is not registered with the registry as it handles only a part of a media object
     """
 
-    def __init__(self, name: str, data: AbstractIonMedia) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: AbstractIonMedia, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
         self.rendition = data.archive_rendition or data
 
@@ -121,8 +121,8 @@ class IonMediaSerializer(IonSerializer):
     this serializer if you use a ``IonMedia`` class that has additional properties
     """
 
-    def __init__(self, name: str, data: AbstractIonMedia) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: AbstractIonMedia, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:

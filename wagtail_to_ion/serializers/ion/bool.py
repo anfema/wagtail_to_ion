@@ -9,8 +9,8 @@ class IonBoolSerializer(IonSerializer):
     Serializes bool values as ``flagcontent``
     """
 
-    def __init__(self, name: str, data: bool) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: bool, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:

@@ -21,8 +21,8 @@ class IonTableSerializer(IonSerializer):
 
     """
 
-    def __init__(self, name: str, data: dict) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: dict, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:

@@ -17,8 +17,8 @@ class IonDocumentSerializer(IonSerializer):
     this serializer if you use a ``IonDocument`` class that has additional properties
     """
 
-    def __init__(self, name: str, data: AbstractIonDocument) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: AbstractIonDocument, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:

@@ -13,8 +13,8 @@ class IonNumberSerializer(IonSerializer):
     want to use is about 2^53 - 1 and the safe minimum is -(2^53 - 1)
     """
 
-    def __init__(self, name: str, data: Union[int, float, Decimal]) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: Union[int, float, Decimal], **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:

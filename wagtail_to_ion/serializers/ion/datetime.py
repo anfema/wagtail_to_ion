@@ -11,8 +11,8 @@ class IonDateTimeSerializer(IonSerializer):
     This serializer handles ``date`` and ``datetime`` objects
     """
 
-    def __init__(self, name: str, data: Union[date, datetime]) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: Union[date, datetime], **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:
