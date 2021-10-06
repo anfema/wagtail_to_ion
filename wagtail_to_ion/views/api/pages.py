@@ -1,5 +1,7 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
 from django.http import Http404
+from django.views.decorators.cache import never_cache
+from django.utils.decorators import method_decorator
 from rest_framework import generics
 from wagtail.core.models import Page
 
@@ -16,6 +18,10 @@ Collection = get_ion_collection_model()
 class DynamicPageDetailView(generics.RetrieveAPIView):
     serializer_class = DynamicPageDetailSerializer
     lookup_field = 'slug'
+
+    @method_decorator(never_cache)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
     def get_serializer(self, *args, **kwargs):
         kwargs['user'] = self.request.user
@@ -51,6 +57,10 @@ class DynamicPageDetailView(generics.RetrieveAPIView):
 
 class PageArchiveView(TarResponseMixin, ListMixin):
     serializer_class = DynamicPageDetailSerializer
+
+    @method_decorator(never_cache)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
     def get_queryset(self):
         return Page.objects.filter(

@@ -4,6 +4,8 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 
 from django.http import Http404, HttpResponse
+from django.views.decorators.cache import never_cache
+from django.utils.decorators import method_decorator
 from django.core.exceptions import ObjectDoesNotExist
 
 from rest_framework import generics
@@ -23,6 +25,10 @@ Collection = get_ion_collection_model()
 class CollectionListView(ListMixin):
     serializer_class = CollectionSerializer
 
+    @method_decorator(never_cache)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
     def get_queryset(self):
         user = self.request.user
         if settings.GET_PAGES_BY_USER:
@@ -35,6 +41,10 @@ class CollectionDetailView(generics.RetrieveAPIView):
     serializer_class = CollectionDetailSerializer
     lookup_field = 'slug'
 
+    @method_decorator(never_cache)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
     def get_queryset(self):
         user = self.request.user
         if settings.GET_PAGES_BY_USER:
@@ -45,6 +55,10 @@ class CollectionDetailView(generics.RetrieveAPIView):
 
 class CollectionArchiveView(TarResponseMixin, ListMixin):
     content_serializer_class = DynamicPageDetailSerializer
+
+    @method_decorator(never_cache)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
     def get_queryset(self):
         try:

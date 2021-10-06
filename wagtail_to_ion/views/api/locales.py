@@ -1,4 +1,6 @@
 # Copyright © 2019 anfema GmbH. All rights reserved.
+from django.views.decorators.cache import never_cache
+from django.utils.decorators import method_decorator
 from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -13,6 +15,10 @@ Language = get_ion_language_model()
 
 class LocaleListView(generics.ListAPIView):
     serializer_class = LocaleSerializer
+
+    @method_decorator(never_cache)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
     def get_collection(self, slug):
         return Collection.objects.filter(live=True, slug=slug)
