@@ -14,12 +14,13 @@ class IonStreamValueSerializer(IonContainerSerializer):
     same block type in the stream field.
     """
 
+    index_children = True
+
     def __init__(self, name:str, data: StreamValue, **kwargs) -> None:
         super().__init__(name, subtype='streamblock', **kwargs)
         for idx, item in enumerate(data):
             item_name = str(item.block_type)
-            child = self.add_child(item_name, item.value)
-            child.index = idx
+            self.add_child(item_name, item.value)
 
     @classmethod
     def supported_types(cls) -> List[Type]:
