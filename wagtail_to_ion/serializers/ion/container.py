@@ -48,7 +48,10 @@ class IonContainerSerializer(IonSerializer):
             resulting_child = child.serialize()
             if resulting_child is not None:
                 if self.index_children:
-                    resulting_child['index'] = child_index
+                    resulting_child = {
+                        'index': child_index,
+                        **resulting_child,
+                    }
                     child_index += 1
                 resulting_children.append(resulting_child)
 
