@@ -119,7 +119,7 @@ def isoDate(d):
     if d:
         return d.replace(microsecond=0, tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ")
     else:
-        return 'None'
+        return '1970-01-01T00:00:00Z'
 
 
 def get_model_mixins(model_name):
