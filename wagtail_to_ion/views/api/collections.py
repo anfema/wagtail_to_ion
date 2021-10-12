@@ -15,7 +15,7 @@ from wagtail.core.models import Page
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models import get_ion_collection_model
 from wagtail_to_ion.serializers import CollectionSerializer, CollectionDetailSerializer, DynamicPageDetailSerializer, make_tar
-from wagtail_to_ion.views.mixins import ListMixin, TarResponseMixin
+from wagtail_to_ion.views.mixins import ListMixin
 from wagtail_to_ion.utils import visible_tree_by_user, visible_collections_by_user
 
 
@@ -53,7 +53,7 @@ class CollectionDetailView(generics.RetrieveAPIView):
             return Collection.objects.filter(live=True)
 
 
-class CollectionArchiveView(TarResponseMixin, ListMixin):
+class CollectionArchiveView(ListMixin):
     content_serializer_class = DynamicPageDetailSerializer
 
     @method_decorator(never_cache)
@@ -113,5 +113,4 @@ class CollectionArchiveView(TarResponseMixin, ListMixin):
                 return HttpResponse(status=304)  # not modified
             updated_pages = list(updated_pages)
 
-        tar = make_tar(list(pages), updated_pages, self.locale, request, content_serializer=self.content_serializer_class)
-        return self.render_to_tar_response(tar)
+        return make_tar(list(pages), updated_pages, self.locale, request, content_serializer=self.content_serializer_class)

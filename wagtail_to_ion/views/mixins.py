@@ -1,6 +1,8 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
 from django.http import HttpResponse
 
+from wagtail_to_ion.tar import TarWriter
+
 from rest_framework import generics
 from rest_framework.response import Response
 
@@ -17,10 +19,3 @@ class ListMixin(generics.ListAPIView):
             else:
                 restructured_data['collection'] = [obj['collection'][0]]
         return Response(restructured_data)
-
-
-class TarResponseMixin(object):
-    def render_to_tar_response(self, tar):
-        response = HttpResponse(tar, content_type='application/x-tar')
-        response['Content-Length'] = len(tar)
-        return response
