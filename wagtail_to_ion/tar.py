@@ -99,10 +99,10 @@ class TarData:
                 content += b"\0"
         return content
 
-    def data(self, block_size: int=512) -> Generator[bytearray]:
+    def data(self, block_size: int=512) -> Generator[bytes, None, None]:
         yield self.header
         for i in range(ceil(self.content/block_size)):
-            yield self.content[i * block_size:(i + 1) * block_size]
+            yield bytes(self.content[i * block_size:(i + 1) * block_size])
 
     @property
     def size(self) -> int:
@@ -119,15 +119,15 @@ class TarFile(TarData):
         self.header = write_header(archive_filename, self.filesize, date=date)
         self.fp = open(self.filename.encode("utf-8"), "rb")
 
-    def data(self, block_size: int=512) -> Generator[bytearray]:    
+    def data(self, block_size: int=512) -> Generator[bytes, None, None]:    
         yield self.header
 
         if self.fp is not None:
             for i in range(ceil(self.content/block_size)):
-                yield bytearray(self.fp.read(block_size))
+                yield self.fp.read(block_size)
 
         if self.filesize % 512 != 0:
-            yield bytearray(b"\0" * (512 - (self.filesize % 512)))
+            yield b"\0" * (512 - (self.filesize % 512))
 
     @property
     def size(self) -> int:
@@ -167,10 +167,10 @@ class TarWriter(StreamingHttpResponse):
     def add_item(self, item: TarData):
         self.items.append(item)
 
-    def data(self, block_size: int=512) -> Generator[bytes]:
+    def data(self, block_size: int=512) -> Generator[bytes, None, None]:
         for item in self.items:
             for chunk in item.data(block_size=block_size):
-                yield bytes(chunk)
+                yield chunk
         yield b"\0" * 1024
 
     @property
