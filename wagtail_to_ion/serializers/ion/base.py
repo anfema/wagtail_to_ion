@@ -22,6 +22,8 @@ class IonSerializer:
 
     registry: ClassVar[Deque[Type[IonSerializer]]] = deque()  # This is the serializer registry
 
+    index_children: ClassVar[bool] = False  # flag to indicate if children of this serializer get an index field
+
     name: str
     index: Optional[int]
 

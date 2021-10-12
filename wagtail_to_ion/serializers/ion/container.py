@@ -43,9 +43,16 @@ class IonContainerSerializer(IonSerializer):
         if result is None:
             return None
         resulting_children = []
+        child_index = 0
         for child in self.children:
             resulting_child = child.serialize()
             if resulting_child is not None:
+                if self.index_children:
+                    resulting_child = {
+                        'index': child_index,
+                        **resulting_child,
+                    }
+                    child_index += 1
                 resulting_children.append(resulting_child)
 
         result.update({
@@ -77,11 +84,12 @@ class IonListSerializer(IonContainerSerializer):
     from the list of registered serializers
     """
 
+    index_children = True
+
     def __init__(self, name: str, data: List[Any], **kwargs) -> None:
         super().__init__(name, subtype='list', **kwargs)
         for idx, item in enumerate(data):
-            child = self.add_child(name + "_item", item)
-            child.index = idx
+            self.add_child(name + "_item", item)
 
     @classmethod
     def supported_types(cls) -> List[Type]:
