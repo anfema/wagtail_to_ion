@@ -24,6 +24,8 @@ def collect_files(request, self, page, collected_files, user):
     spec = page.specific
 
     for field in spec.content_panels:
+        if field.__class__.__name__ == 'MultiFieldPanel':
+            continue
         sub_field = getattr(spec, field.field_name)
         if sub_field.__class__.__name__ in ['IonDocument', 'IonMedia'] and sub_field.include_in_archive:
             items = {sub_field.file.url: sub_field}

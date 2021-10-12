@@ -380,6 +380,8 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
             obj, page_filled, wrapping = self.get_contents_for_user(obj, wrapping, request)
         if page_filled:
             for field in obj.specific.content_panels:
+                if field.__class__.__name__ == 'MultiFieldPanel':
+                    continue
                 field_data = getattr(obj.specific, field.field_name)
                 field_type = None
                 for fieldmeta in obj.specific._meta.fields:
