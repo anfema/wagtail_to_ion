@@ -1,4 +1,5 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
+import logging
 import re
 from datetime import datetime, date
 from typing import Iterable, Tuple
@@ -19,6 +20,9 @@ from wagtail_to_ion.models.abstract import AbstractIonPage
 from wagtail_to_ion.models.file_based_models import AbstractIonImage, AbstractIonDocument, AbstractIonMedia
 
 from .base import DataObject
+
+
+logger = logging.getLogger(__name__)
 
 
 replacements = [
@@ -139,6 +143,11 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
             content['original_file_size'] = content_data.file.size
         except Exception as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
+                log_extra = {
+                    'image_filename': content_data.file.name,
+                    'rendition_filename': archive.file.name if archive else None,
+                }
+                logger.warning('Skipped missing image or rendition file', extra=log_extra, exc_info=True)
                 content['mime_type'] = 'application/x-empty'
                 content['image'] = 'IMAGE_MISSING'
                 content['original_image'] = 'IMAGE_MISSING'
@@ -195,6 +204,8 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
             content['mime_type'] = content_data.file.mime_type
         except Exception as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
+                log_extra = {'document_filename': content_data.file.name}
+                logger.warning('Skipped missing document file', extra=log_extra, exc_info=True)
                 content['file'] = 'FILE_MISSING'
                 content['file_size'] = 0
                 content['checksum'] = 'null:'
@@ -280,6 +291,10 @@ def parse_data(content_data, content, fieldname, *, content_field_meta=None, blo
                 thumbnail_slot['translation_y'] = 0
                 thumbnail_slot['scale'] = 1.0
                 thumbnail_slot['outlet'] = "video_thumbnail"
+        else:
+            if settings.ION_ALLOW_MISSING_FILES is True:
+                log_extra = {'media_filename': content_data.file.name}
+                logger.warning('Skipped missing media file', extra=log_extra, exc_info=True)
 
         fill_contents(media_slot, media_container)
         fill_contents(thumbnail_slot, media_container)
