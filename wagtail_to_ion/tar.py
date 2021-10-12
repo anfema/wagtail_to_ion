@@ -162,6 +162,7 @@ class TarDir(TarData):
 class TarWriter(StreamingHttpResponse):
     def __init__(self):
         self.items: List[TarData] = []
+        self.headers['Content-Type'] = 'application/x-tar'
 
     def add_item(self, item: TarData):
         self.items.append(item)
