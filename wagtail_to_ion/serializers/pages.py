@@ -3,12 +3,11 @@ import logging
 import re
 from datetime import datetime, date
 from typing import Iterable, Tuple
+from wagtail_to_ion.serializers.ion.container import IonContainerSerializer
 
-from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.urls import reverse
 
-from bs4 import BeautifulSoup
 from rest_framework import serializers
 from rest_framework.fields import empty
 
@@ -16,8 +15,6 @@ from wagtail.core.models import Page, PageViewRestriction
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.utils import isoDate, get_collection_for_page
-from wagtail_to_ion.models.abstract import AbstractIonPage
-from wagtail_to_ion.models.file_based_models import AbstractIonImage, AbstractIonDocument, AbstractIonMedia
 
 from .base import DataObject
 
@@ -55,7 +52,7 @@ def get_wagtail_panels_and_extra_fields(obj) -> Iterable[Tuple[str, str, models.
             if isinstance(item, str):
                 field_path = item
                 outlet_name = item
-            elif isinstance(item, (tuple, list)):
+            elif isinstance(item, (tuple, list)) and len(item) == 2:
                 outlet_name, field_path = item
             else:
                 raise NotImplementedError()
@@ -79,287 +76,6 @@ def make_absolute_url(file):
         return file.url
     else:
         return settings.BASE_URL + file.url
-
-
-def parse_data(content_data, content, fieldname, *, content_field_meta=None, block_type=None, streamfield=False, count=None):
-    content['variation'] = 'default'
-    content['is_searchable'] = False
-
-    if content_data.__class__.__name__ == 'list':
-        # this content is (so far) only used by the survey_link JSONField in CandidateSpecificSurvey
-        url = content_data[0]['value']
-        content['type'] = 'textcontent'
-        content['text'] = url
-        content['is_multiline'] = False
-        content['mime_type'] = 'text/plain'
-        content['outlet'] = fieldname
-    # elif content_field_meta is not None and hasattr(content_field_meta, 'choices') and content_field_meta.choices is not None:
-    #     # Choicefield
-    #     content['type'] = 'optioncontent'
-    #     data = content_data
-    #     for key, display in content_field_meta.choices:
-    #         if key == content_data:
-    #             data = display
-    #             break
-    #     if data.__class__.__name__ == 'str':
-    #         content['value'] = data.strip()
-    #     else:
-    #         content['value'] = data
-    #     content['outlet'] = fieldname
-    elif content_data.__class__.__name__ in ['str', 'RichText']:
-        try:
-            # check if text is html
-            is_html = bool(BeautifulSoup(content_data, "html.parser").find())
-        except TypeError:
-            is_html = content_data.__class__.__name__ == 'RichText'
-        if is_html:
-            content_data = parse_correct_html(content_data)
-        content['type'] = 'textcontent'
-        content['text'] = content_data.strip()
-        content['is_multiline'] = is_html
-        content['mime_type'] = 'text/html' if is_html else 'text/plain'
-        if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
-        if not content_data:
-            # Do not include this outlet in the json if the field is an empty string.
-            content = None
-    elif isinstance(content_data, AbstractIonImage):
-        archive = content_data.archive_rendition
-        content['type'] = 'imagecontent'
-        try:
-            content['mime_type'] = archive.file.mime_type
-            content['image'] = make_absolute_url(archive.file)
-            content['file_size'] = archive.file.size
-            content['original_image'] = make_absolute_url(content_data.file)
-            content['checksum'] = archive.file.checksum
-            content['width'] = archive.file.width
-            content['height'] = archive.file.height
-            content['original_mime_type'] = content_data.file.mime_type
-            content['original_checksum'] = content_data.file.checksum
-            content['original_width'] = content_data.file.width
-            content['original_height'] = content_data.file.height
-            content['original_file_size'] = content_data.file.size
-        except Exception as e:
-            if settings.ION_ALLOW_MISSING_FILES is True:
-                log_extra = {
-                    'image_filename': content_data.file.name,
-                    'rendition_filename': archive.file.name if archive else None,
-                }
-                logger.warning('Skipped missing image or rendition file', extra=log_extra, exc_info=True)
-                content['mime_type'] = 'application/x-empty'
-                content['image'] = 'IMAGE_MISSING'
-                content['original_image'] = 'IMAGE_MISSING'
-                content['file_size'] = 0
-                content['checksum'] = 'null:'
-                content['width'] = 0
-                content['height'] = 0
-                content['original_mime_type'] = 'application/x-empty'
-                content['original_checksum'] = 'null:'
-                content['original_width'] = 0
-                content['original_height'] = 0
-                content['original_file_size'] = 0
-            else:
-                raise e
-
-        content['translation_x'] = 0
-        content['translation_y'] = 0
-        content['scale'] = 1.0
-        if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
-    # elif content_data.__class__.__name__ == 'StructValue':#TODO get class name color?
-    # 	content['type'] = 'colorcontent'
-    # 	content['r'] = content_data['r']
-    # 	content['g'] = content_data['g']
-    # 	content['b'] = content_data['b']
-    # 	content['a'] = content_data['a']
-    # 	if streamfield:
-    # 		content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-    # 	else:
-    # 		content['outlet'] = fieldname
-    elif content_data.__class__.__name__ == 'datetime':
-        content['type'] = 'datetimecontent'
-        content['datetime'] = isoDate(content_data)
-        if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
-    elif content_data.__class__.__name__ == 'date':
-        content['type'] = 'datetimecontent'
-        content['datetime'] = isoDate(datetime(content_data.year, month=content_data.month, day=content_data.day))
-        if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
-    elif isinstance(content_data, AbstractIonDocument):
-        content['type'] = 'filecontent'
-        content['name'] = content_data.title
-        try:
-            content['file'] = make_absolute_url(content_data.file)
-            content['file_size'] = content_data.file.size
-            content['checksum'] = content_data.file.checksum
-            content['mime_type'] = content_data.file.mime_type
-        except Exception as e:
-            if settings.ION_ALLOW_MISSING_FILES is True:
-                log_extra = {'document_filename': content_data.file.name}
-                logger.warning('Skipped missing document file', extra=log_extra, exc_info=True)
-                content['file'] = 'FILE_MISSING'
-                content['file_size'] = 0
-                content['checksum'] = 'null:'
-                content['mime_type'] = 'application/x-empty'
-            else:
-                raise e
-        if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
-    elif content_data.__class__.__name__ == 'bool':
-        content['type'] = 'flagcontent'
-        content['is_enabled'] = content_data
-        if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
-    elif isinstance(content_data, AbstractIonMedia):
-        media_container = {}
-        media_container['variation'] = 'default'
-        media_container['is_searchable'] = False
-        media_container['type'] = 'containercontent'
-        if streamfield:
-            media_container['outlet'] = get_stream_field_outlet_name(fieldname, 'mediacontainer', count)
-        else:
-            media_container['outlet'] = 'mediacontainer_{}'.format(fieldname)
-        media_container['children'] = []
-
-        media_slot = {}
-        thumbnail_slot = {}
-
-        media_slot['type'] = 'mediacontent'
-        thumbnail_slot['type'] = 'imagecontent'
-
-        if content_data.file.storage.exists(content_data.file.name):
-            if content_data.type == 'audio':
-                media_slot['mime_type'] = content_data.mime_type
-                media_slot['file'] = make_absolute_url(content_data.file)
-                media_slot['checksum'] = content_data.checksum
-                media_slot['length'] = content_data.duration
-                media_slot['file_size'] = content_data.file.size
-                media_slot['name'] = content_data.title
-                media_slot['original_mime_type'] = content_data.mime_type
-                media_slot['original_file'] = make_absolute_url(content_data.file)
-                media_slot['original_checksum'] = content_data.checksum
-                media_slot['original_length'] = content_data.duration
-                media_slot['original_file_size'] = content_data.file.size
-                media_slot['outlet'] = 'audio'
-            else:
-                rendition = content_data.archive_rendition
-                if rendition is None:
-                    rendition = content_data
-                media_slot['mime_type'] = content_data.mime_type
-                media_slot['file'] = make_absolute_url(rendition.file)
-                media_slot['checksum'] = rendition.checksum
-                media_slot['width'] = rendition.width if rendition.width else 0
-                media_slot['height'] = rendition.height if rendition.height else 0
-                media_slot['length'] = content_data.duration
-                media_slot['file_size'] = rendition.file.size
-                media_slot['name'] = content_data.title
-                media_slot['original_mime_type'] = content_data.mime_type
-                media_slot['original_file'] = make_absolute_url(content_data.file)
-                media_slot['original_checksum'] = content_data.checksum
-                media_slot['original_width'] = content_data.width if content_data.width else 0
-                media_slot['original_height'] = content_data.height if content_data.height else 0
-                media_slot['original_length'] = content_data.duration
-                media_slot['original_file_size'] = content_data.file.size
-                media_slot['outlet'] = 'video'
-
-                thumbnail_slot['mime_type'] = content_data.thumbnail_mime_type
-                thumbnail_slot['image'] = make_absolute_url(rendition.thumbnail)
-                thumbnail_slot['checksum'] = rendition.thumbnail_checksum
-                thumbnail_slot['width'] = rendition.width
-                thumbnail_slot['height'] = rendition.height
-                thumbnail_slot['file_size'] = rendition.thumbnail.size
-                thumbnail_slot['original_mime_type'] = content_data.thumbnail_mime_type
-                thumbnail_slot['original_image'] = make_absolute_url(content_data.thumbnail)
-                thumbnail_slot['original_checksum'] = content_data.thumbnail_checksum
-                thumbnail_slot['original_width'] = content_data.width
-                thumbnail_slot['original_height'] = content_data.height
-                thumbnail_slot['original_file_size'] = content_data.thumbnail.size
-                thumbnail_slot['translation_x'] = 0
-                thumbnail_slot['translation_y'] = 0
-                thumbnail_slot['scale'] = 1.0
-                thumbnail_slot['outlet'] = "video_thumbnail"
-        else:
-            if settings.ION_ALLOW_MISSING_FILES is True:
-                log_extra = {'media_filename': content_data.file.name}
-                logger.warning('Skipped missing media file', extra=log_extra, exc_info=True)
-
-        fill_contents(media_slot, media_container)
-        fill_contents(thumbnail_slot, media_container)
-        return media_container
-    elif content_data.__class__.__name__ in ['int', 'float', 'Decimal']:
-        content['type'] = 'numbercontent'
-        content['value'] = content_data
-        if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
-    elif content_data.__class__.__name__ == 'dict':
-        content['type'] = 'tablecontent'
-        content['cells'] = content_data['data']
-        content['first_row_header'] = content_data['first_row_is_table_header']
-        content['first_col_header'] = content_data['first_col_is_header']
-        if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
-    elif isinstance(content_data, AbstractIonPage) or isinstance(content_data, Page):
-        content['type'] = 'connectioncontent'
-        content['connection_string'] = '//{}/{}'.format(get_collection_for_page(content_data), content_data.slug)
-        if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, block_type, count)
-        else:
-            content['outlet'] = fieldname
-    elif content_data.__class__.__name__ == 'StreamValue':
-        content['type'] = 'containercontent'
-        if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, 'container', count)
-        else:
-            content['outlet'] = '{}_container'.format(fieldname)
-
-        # parse content for all wagtail streamfield block fields
-        children = []
-        for idx, item in enumerate(content_data):
-            children.append(
-                parse_data(item.value, {}, fieldname, block_type=item.block_type, streamfield=True, count=idx)
-            )
-
-        # flatten
-        if len(children) == 1:
-            content.update(children[0])
-        elif len(children) > 1:
-            return children
-        else:
-            return None
-    elif content_data.__class__.__name__ == 'StructValue':
-        result = []
-        for item in content_data:
-            r = parse_data(content_data[item], {}, item)
-            if r is None:
-                continue
-            r['variation'] = 'default'
-            r['is_searchable'] = False
-            result.append(r)
-
-        content['type'] = 'containercontent'
-        if streamfield:
-            content['outlet'] = get_stream_field_outlet_name(fieldname, 'container', count)
-        else:
-            content['outlet'] = '{}_container_{}'.format(fieldname, count)
-        content['children'] = result
-    return content
 
 
 class DynamicPageSerializer(serializers.ModelSerializer):
@@ -465,11 +181,6 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
     def get_locale(self, obj):
         return getattr(obj, 'locale_code', getattr(obj.specific, 'locale_code', None))
 
-    def get_contents_for_user(self, obj, wrapping, request):
-        # Just returns the content vanilla as user specific content is
-        # a thing for the implementer of special page types
-        return obj, True, wrapping
-
     def remap_outlet_name(self, outlet_path):
         # just returns the outlet name unaltered as remapping
         # usually happens in specialized serializers
@@ -485,43 +196,31 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         for item in struct['children']:
             self.remap_outlet_names_recursive(item, path + [struct['outlet']])
 
-    def get_contents(self, obj):
-        request = self.context['request']
-        result = []
-        wrapping = {}
-        wrapping['type'] = 'containercontent'
-        wrapping['variation'] = 'default'
-        wrapping['outlet'] = 'container_0'
-        wrapping['children'] = []
-        page_filled = True  # TODO: Better name
-        if settings.GET_PAGES_BY_USER:
-            obj, page_filled, wrapping = self.get_contents_for_user(obj, wrapping, request)
-        if page_filled:
-            for outlet_name, field_name, instance in get_wagtail_panels_and_extra_fields(obj):
-                field_data = getattr(instance, field_name)
-                try:
-                    field_type = instance._meta.get_field(field_name)
-                except FieldDoesNotExist:
-                    field_type = None
+    def build_tree(self, obj, request):
+        # Create a top-level container
+        container = IonContainerSerializer('container_0')
 
-                content = {}
-                # parse content for all standard django and wagtail fields
-                if hasattr(field_type, 'ion_serialize') and callable(field_type.ion_serialize):
-                    content = field_type.ion_serialize(field_data, content, outlet_name)
-                else:
-                    content = parse_data(field_data, content, outlet_name, content_field_meta=field_type)
-                if content:
-                    if isinstance(content, list):
-                        wrapping['children'].extend(content)
-                    else:
-                        # content contains at least ``variation`` and ``is_searchable``,
-                        # do not add this to children if there are only those two in there
-                        # and no ``type``
-                        if 'type' in content:
-                            wrapping['children'].append(content)
-        self.remap_outlet_names_recursive(wrapping, [])
-        result.append(wrapping)
-        return result
+        if obj is None:
+            return container
+
+        # add all outlets to the container
+        for outlet_name, field_name, instance in get_wagtail_panels_and_extra_fields(obj):
+            container.add_child(outlet_name, getattr(instance, field_name)) # This will auto-detect the serializers to use
+
+        return container
+
+    def get_contents(self, obj):
+        # serialize into a ``dict`` with simple data types
+        data = self.build_tree(obj, self.context.get('request', None))
+        if data is None:
+            return []
+        
+        data = data.serialize()
+
+        # optionally remap outlet names if needed (e.g. outlet should be called like a reserved word in python)
+        self.remap_outlet_names_recursive(data, [])
+
+        return [data]
 
     def get_children(self, obj):
         if settings.GET_PAGES_BY_USER:
