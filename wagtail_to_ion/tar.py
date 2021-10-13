@@ -160,8 +160,8 @@ class TarStorageFile(TarFile):
     def data(self, block_size: int=512) -> Generator[bytes, None, None]:    
         if self.file is not None:
             try:
-                yield bytes(write_header(self.archive_filename, self.file.size, date=self.file.last_modified))
                 with self.file.open('rb') as fp:
+                    yield bytes(write_header(self.archive_filename, self.file.size, date=self.file.last_modified))  # Try to use the already open connection to avoid head call
                     for i in range(ceil(self.file.size/block_size)):
                         yield fp.read(block_size)
                 if self.file.size % 512 != 0:
