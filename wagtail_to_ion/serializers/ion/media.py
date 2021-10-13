@@ -126,12 +126,11 @@ class IonMediaSerializer(IonSerializer):
     def serialize(self) -> Optional[Dict[str, Any]]:
         container = IonContainerSerializer('mediacontainer_' + self.name, subtype='media')
 
-        if os.path.exists(self.data.file.path):
-            if self.data.type == 'audio':
-                container.children.append(IonAudioSerializer('audio', self.data))
-            else:
-                container.children.append(IonVideoSerializer('video', self.data))
-                container.children.append(IonVideoThumbnailSerializer('video_thumbnail', self.data))
+        if self.data.type == 'audio':
+            container.children.append(IonAudioSerializer('audio', self.data))
+        else:
+            container.children.append(IonVideoSerializer('video', self.data))
+            container.children.append(IonVideoThumbnailSerializer('video_thumbnail', self.data))
 
         return container.serialize()
 
