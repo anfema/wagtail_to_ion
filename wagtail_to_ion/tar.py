@@ -111,46 +111,75 @@ class TarData:
 
 class TarFile(TarData):
     def __init__(self, filename: str, archive_filename: Optional[str]=None, date: Optional[datetime]=None) -> None:
-        file_stat = os.stat(filename.encode("utf-8"))
+        self.filename = filename.encode("utf-8")
+
+        self.filesize = 0
+        try:
+            file_stat = os.stat(self.filename)
+            self.filesize = file_stat.st_size
+        except FileNotFoundError:
+            if settings.ION_ALLOW_MISSING_FILES:
+                pass
+            else:
+                raise
+
         if not date:
             date = datetime.fromtimestamp(file_stat.st_mtime)
 
-        self.filesize = file_stat.st_size
         self.header = write_header(archive_filename, self.filesize, date=date)
-        self.fp = open(self.filename.encode("utf-8"), "rb")
 
     def data(self, block_size: int=512) -> Generator[bytes, None, None]:    
         yield bytes(self.header)
 
-        if self.fp is not None:
-            for i in range(ceil(self.filesize/block_size)):
-                yield self.fp.read(block_size)
-
+        try:
+            with open(self.filename, 'rb') as fp:
+                for i in range(ceil(self.filesize/block_size)):
+                    yield fp.read(block_size)
+        except FileNotFoundError:
+            if settings.ION_ALLOW_MISSING_FILES:
+                pass
+            else:
+                raise
+    
         if self.filesize % 512 != 0:
             yield b"\0" * (512 - (self.filesize % 512))
 
     @property
     def size(self) -> int:
         if self.filesize % 512 != 0:
-            return len(self.header) + len(self.filesize) + (512 - (self.filesize % 512))
+            return len(self.header) + self.filesize + (512 - (self.filesize % 512))
         else:
-            return len(self.header) + len(self.filesize)
+            return len(self.header) + self.filesize
 
 
 class TarStorageFile(TarFile):
     def __init__(self, file: IonFieldFile, archive_filename: str) -> None:
-        self.fp = None
-        self.filesize = 0
-        self.header = write_header(archive_filename, 0, date=file.last_modified)
-        try:
-            self.fp = file.open('rb')
-            self.filesize = file.size
-            self.header = write_header(archive_filename, self.filesize, date=file.last_modified)
-        except Exception:  # noqa (storage backends might raise an unknown exception)
-            if settings.ION_ALLOW_MISSING_FILES:
-                pass
-            else:
-                raise
+        self.file = file
+        self.archive_filename = archive_filename
+
+    def data(self, block_size: int=512) -> Generator[bytes, None, None]:    
+        if self.file is not None:
+            try:
+                yield bytes(write_header(self.archive_filename, self.file.size, date=self.file.last_modified))
+                with self.file.open('rb') as fp:
+                    for i in range(ceil(self.file.size/block_size)):
+                        yield fp.read(block_size)
+                if self.file.size % 512 != 0:
+                    yield b"\0" * (512 - (self.file.size % 512))
+            except Exception:  # noqa (storage backends might raise an unknown exception)
+                if settings.ION_ALLOW_MISSING_FILES:
+                    # Fill with zeroes
+                    for i in range(ceil(self.file.size/block_size)):
+                        yield b"\0" * 512
+                else:
+                    raise
+
+    @property
+    def size(self) -> int:
+        if self.file.size % 512 != 0:
+            return 512 + self.file.size + (512 - (self.file.size % 512))
+        else:
+            return 512 + self.file.size
 
 
 class TarDir(TarData):
