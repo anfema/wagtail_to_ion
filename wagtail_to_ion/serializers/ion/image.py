@@ -29,18 +29,18 @@ class IonImageSerializer(IonSerializer):
         result['type'] = 'imagecontent'
 
         try:
-            result['mime_type'] = self.archive.file.mime_type
+            result['mime_type'] = self.archive.mime_type
             result['image'] = settings.BASE_URL + self.archive.file.url
-            result['file_size'] = self.archive.file.size
+            result['file_size'] = self.archive.file_size
             result['original_image'] = settings.BASE_URL + self.data.file.url
-            result['checksum'] = self.archive.file.checksum
-            result['width'] = self.archive.file.width
-            result['height'] = self.archive.file.height
-            result['original_mime_type'] = self.data.file.mime_type
-            result['original_checksum'] = self.data.file.checksum
-            result['original_width'] = self.data.file.width
-            result['original_height'] = self.data.file.height
-            result['original_file_size'] = self.data.file.size
+            result['checksum'] = self.archive.checksum
+            result['width'] = self.archive.width
+            result['height'] = self.archive.height
+            result['original_mime_type'] = self.data.mime_type
+            result['original_checksum'] = self.data.checksum
+            result['original_width'] = self.data.width
+            result['original_height'] = self.data.height
+            result['original_file_size'] = self.data.file_size
         except Exception as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
                 log_extra = {

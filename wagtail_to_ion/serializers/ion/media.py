@@ -32,13 +32,13 @@ class IonAudioSerializer(IonSerializer):
             'file': settings.BASE_URL + self.data.file.url,
             'checksum': self.data.checksum,
             'length': self.data.duration,
-            'file_size': self.data.file.size,
+            'file_size': self.data.file_size,
             'name': self.data.title,
             'original_mime_type': self.data.mime_type,
             'original_file': settings.BASE_URL + self.data.file.url,
             'original_checksum': self.data.checksum,
             'original_length': self.data.duration,
-            'original_file_size': self.data.file.size,
+            'original_file_size': self.data.file_size,
         })
         return result
 
@@ -66,7 +66,7 @@ class IonVideoSerializer(IonSerializer):
             'width': self.rendition.width if self.rendition.width else 0,
             'height': self.rendition.height if self.rendition.height else 0,
             'length': self.data.duration,
-            'file_size': self.rendition.file.size,
+            'file_size': self.rendition.file_size,
             'name': self.data.title,
             'original_mime_type': self.data.mime_type,
             'original_file': settings.BASE_URL + self.data.file.url,
@@ -74,7 +74,7 @@ class IonVideoSerializer(IonSerializer):
             'original_width': self.data.width if self.data.width else 0,
             'original_height': self.data.height if self.data.height else 0,
             'original_length': self.data.duration,
-            'original_file_size': self.data.file.size,
+            'original_file_size': self.data.file_size,
         })
         return result
 

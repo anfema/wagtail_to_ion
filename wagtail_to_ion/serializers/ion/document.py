@@ -30,9 +30,9 @@ class IonDocumentSerializer(IonSerializer):
 
         try:
             result['file'] = settings.BASE_URL + self.data.file.url
-            result['file_size'] = self.data.file.size
-            result['checksum'] = self.data.file.checksum
-            result['mime_type'] = self.data.file.mime_type
+            result['file_size'] = self.data.file_size
+            result['checksum'] = self.data.checksum
+            result['mime_type'] = self.data.mime_type
         except Exception as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
                 log_extra = {'document_filename': self.data.file.name}

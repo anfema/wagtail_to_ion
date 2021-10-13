@@ -51,18 +51,24 @@ class IonFieldFile(FieldFile):
     @property
     def checksum(self) -> Optional[str]:
         """Returns the sha256 checksum of the file or `None` if the file is not available."""
+        if hasattr(self.field, 'checksum_field'):
+            return getattr(self.instance, self.field.checksum_field)
         self._require_file()
         return self._get_file_meta('checksum')
 
     @property
     def mime_type(self) -> Optional[str]:
         """Returns the detected mime type of the file or `None` if the file is not available."""
+        if hasattr(self.field, 'mime_type_field'):
+            return getattr(self.instance, self.field.mime_type_field)
         self._require_file()
         return self._get_file_meta('mime_type')
 
     @property
     def size(self) -> Optional[int]:
         """Returns the size of the file or `None` if the file is not available."""
+        if hasattr(self.field, 'file_size_field'):
+            return getattr(self.instance, self.field.file_size_field)
         self._require_file()
         if not self._committed:
             return self.file.size
@@ -71,6 +77,8 @@ class IonFieldFile(FieldFile):
     @property
     def last_modified(self) -> Optional[datetime.datetime]:
         """Returns the last modification time of the file or `None` if the file is not available."""
+        if hasattr(self.field, 'last_modified_field'):
+            return getattr(self.instance, self.field.last_modified_field)
         self._require_file()
         return self._get_file_meta('last_modified')
 
