@@ -30,7 +30,7 @@ class IonImageSerializer(IonSerializer):
             result['checksum'] = self.archive.checksum
             result['width'] = self.archive.width
             result['height'] = self.archive.height
-        except (ValueError, AttributeError) as e:
+        except (ValueError, AttributeError, FileNotFoundError) as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
                 result['mime_type'] = 'application/x-empty'
                 result['image'] = 'IMAGE_MISSING'

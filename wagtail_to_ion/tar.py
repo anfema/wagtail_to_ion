@@ -100,8 +100,8 @@ class TarData:
         return content
 
     def data(self, block_size: int=512) -> Generator[bytes, None, None]:
-        yield self.header
-        for i in range(ceil(self.content/block_size)):
+        yield bytes(self.header)
+        for i in range(ceil(len(self.content)/block_size)):
             yield bytes(self.content[i * block_size:(i + 1) * block_size])
 
     @property
@@ -120,7 +120,7 @@ class TarFile(TarData):
         self.fp = open(self.filename.encode("utf-8"), "rb")
 
     def data(self, block_size: int=512) -> Generator[bytes, None, None]:    
-        yield self.header
+        yield bytes(self.header)
 
         if self.fp is not None:
             for i in range(ceil(self.content/block_size)):
@@ -161,14 +161,14 @@ class TarDir(TarData):
 
 class TarWriter(StreamingHttpResponse):
     def __init__(self):
-        self.items: List[TarData] = []
-        self.headers['Content-Type'] = 'application/x-tar'
+        super().__init__(content_type='application/x-tar', status=200)
+        self._items: List[TarData] = []
 
     def add_item(self, item: TarData):
-        self.items.append(item)
+        self._items.append(item)
 
     def data(self, block_size: int=512) -> Generator[bytes, None, None]:
-        for item in self.items:
+        for item in self._items:
             for chunk in item.data(block_size=block_size):
                 yield chunk
         yield b"\0" * 1024
@@ -176,10 +176,14 @@ class TarWriter(StreamingHttpResponse):
     @property
     def size(self) -> int:
         sz = 0
-        for item in self.items:
+        for item in self._items:
             sz += item.size
         return sz
 
     @property
     def streaming_content(self):
         return self.data()
+    
+    @streaming_content.setter
+    def streaming_content(self, value):
+        pass
