@@ -1,9 +1,9 @@
 from __future__ import annotations
-from typing import List, Any, TypeVar, Union, Dict, ClassVar, Optional
+
+import weakref
+from typing import List, Any, Dict, ClassVar, Optional, Type, Deque, Mapping
 from collections import deque
 import json
-
-T = TypeVar('T')
 
 
 class IonSerializationError(Exception):
@@ -20,9 +20,21 @@ class IonSerializer:
     to register new serializers for new types.
     """
 
-    registry: ClassVar[deque] = deque()  # This is the serializer registry
+    registry: ClassVar[Deque[Type[IonSerializer]]] = deque()  # This is the serializer registry
 
-    def __init__(self, name: str) -> None:
+    name: str
+    index: Optional[int]
+
+    _context: Optional[Mapping] = None
+    _parent = None  # type: weakref.ReferenceType[IonSerializer]
+
+    def __init__(
+        self,
+        name: str,
+        *args,
+        context: Optional[Mapping] = None,
+        parent: Optional[IonSerializer] = None,
+    ) -> None:
         """
         By default we only take a name to initialize a serializer (this maps to the outlet name),
         but this will be expanded with a second parameter ``data`` for all subclasses to take the
@@ -30,6 +42,10 @@ class IonSerializer:
         """
         self.name = name  # Outlet name
         self.index = None  # Set to a value to serialize an ``index`` attribute into the output
+        if context is not None:
+            self.context = context
+        if parent is not None:
+            self.parent = parent
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         """
@@ -56,8 +72,28 @@ class IonSerializer:
         """
         return json.dumps(self.serialize())
 
+    @property
+    def context(self) -> Mapping:
+        if self._context is not None:
+            return self._context
+        if self.parent is not None:
+            return self.parent.context
+        return {}
+
+    @context.setter
+    def context(self, context: Mapping) -> None:
+        self._context = context
+
+    @property
+    def parent(self) -> Optional[IonSerializer]:
+        return self._parent() if self._parent is not None else None
+
+    @parent.setter
+    def parent(self, parent: IonSerializer) -> None:
+        self._parent = weakref.ref(parent)
+
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         """
         Subclasses will return the classes of data they can serialize (e.g. ``str`` or ``int`` or custom classes)
         """
@@ -72,7 +108,7 @@ class IonSerializer:
         return True
 
     @classmethod
-    def find_serializer(cls, target: T, data: Optional[Any]=None) -> IonSerializer:
+    def find_serializer(cls, target: Any, data: Optional[Any] = None) -> Optional[Type[IonSerializer]]:
         """
         This finds a serializer for a target data type. Optionally you can give the function the object
         that is to be serialized to run a sanity check on the data before even initializing the serializer.
@@ -88,7 +124,7 @@ class IonSerializer:
         return None
 
     @classmethod
-    def register(cls, serializer: IonSerializer) -> None:
+    def register(cls, serializer: Type[IonSerializer]) -> None:
         """
         Use this function to register a new serializer class with the system. The serializer will be
         picked automatically when the ``supported_types`` and the ``can_serialize`` checks pass.

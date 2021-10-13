@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import List, Any, Union, Dict, Optional
+from typing import List, Any, Union, Dict, Optional, Type
 from decimal import Decimal
 
-from .base import IonSerializer, T
+from .base import IonSerializer
 
 
 class IonNumberSerializer(IonSerializer):
@@ -13,12 +13,14 @@ class IonNumberSerializer(IonSerializer):
     want to use is about 2^53 - 1 and the safe minimum is -(2^53 - 1)
     """
 
-    def __init__(self, name: str, data: Union[int, float, Decimal]) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: Union[int, float, Decimal], **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
+        if result is None:
+            return None
         result.update({
             'type': 'numbercontent',
             'value': self.data,
@@ -26,8 +28,12 @@ class IonNumberSerializer(IonSerializer):
         return result
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [int, float, Decimal]
+
+    @classmethod
+    def can_serialize(cls, data: Any) -> bool:
+        return not isinstance(data, bool)  # don't handle `bool` (which is a subclass of `int`)
 
 
 IonSerializer.register(IonNumberSerializer)

@@ -12,20 +12,20 @@ from .table import IonTableSerializer
 from .text import IonTextSerializer
 from .null import IonNoneSerializer
 
-__all__ = [
-    IonSerializer,
-    IonBoolSerializer,
-    IonContainerSerializer,
-    IonListSerializer,
-    IonDateTimeSerializer,
-    IonDocumentSerializer,
-    IonImageSerializer,
-    IonMediaSerializer,
-    IonNumberSerializer,
-    IonPageSerializer,
-    IonStreamValueSerializer,
-    IonStructValueSerializer,
-    IonTableSerializer,
-    IonTextSerializer,
-    IonNoneSerializer,
-]
+__all__ = (
+    'IonSerializer',
+    'IonBoolSerializer',
+    'IonContainerSerializer',
+    'IonListSerializer',
+    'IonDateTimeSerializer',
+    'IonDocumentSerializer',
+    'IonImageSerializer',
+    'IonMediaSerializer',
+    'IonNumberSerializer',
+    'IonPageSerializer',
+    'IonStreamValueSerializer',
+    'IonStructValueSerializer',
+    'IonTableSerializer',
+    'IonTextSerializer',
+    'IonNoneSerializer',
+)

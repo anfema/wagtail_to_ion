@@ -1,7 +1,7 @@
 from __future__ import annotations
-from typing import List, Any, Union, Dict, Optional
+from typing import List, Any, Dict, Optional, Type
 
-from .base import IonSerializer, T
+from .base import IonSerializer
 
 
 class IonBoolSerializer(IonSerializer):
@@ -9,12 +9,14 @@ class IonBoolSerializer(IonSerializer):
     Serializes bool values as ``flagcontent``
     """
 
-    def __init__(self, name: str, data: bool) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: bool, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
+        if result is None:
+            return None
         result.update({
             'type': 'flagcontent',
             'is_enabled': self.data
@@ -22,7 +24,7 @@ class IonBoolSerializer(IonSerializer):
         return result
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [bool]
 
 

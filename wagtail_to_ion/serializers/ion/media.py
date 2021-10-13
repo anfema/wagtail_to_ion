@@ -1,11 +1,15 @@
 from __future__ import annotations
-from typing import List, Any, Union, Dict, Optional
-import os
+
+import logging
+from typing import List, Any, Dict, Optional, Type
 
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models.file_based_models import AbstractIonMedia
-from .base import IonSerializer, T
+from .base import IonSerializer
 from .container import IonContainerSerializer
+
+
+logger = logging.getLogger(__name__)
 
 
 class IonAudioSerializer(IonSerializer):
@@ -14,12 +18,14 @@ class IonAudioSerializer(IonSerializer):
     with the registry as it handles only a part of a media object
     """
 
-    def __init__(self, name: str, data: AbstractIonMedia) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: AbstractIonMedia, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
+        if result is None:
+            return None
         result.update({
             'type': 'mediacontent',
             'mime_type': self.data.mime_type,
@@ -43,17 +49,15 @@ class IonVideoSerializer(IonSerializer):
     with the registry as it handles only a part of a media object
     """
 
-    def __init__(self, name: str, data: AbstractIonMedia) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: AbstractIonMedia, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
-        rendition = data.renditions.filter(transcode_finished=True).first()
-        if rendition is None:
-            self.rendition = data
-        else:
-            self.rendition = rendition
+        self.rendition = data.archive_rendition or data
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
+        if result is None:
+            return None
         result.update({
             'type': 'mediacontent',
             'mime_type': self.data.mime_type,
@@ -81,17 +85,15 @@ class IonVideoThumbnailSerializer(IonSerializer):
     is not registered with the registry as it handles only a part of a media object
     """
 
-    def __init__(self, name: str, data: AbstractIonMedia) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: AbstractIonMedia, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
-        rendition = data.renditions.filter(transcode_finished=True).first()
-        if rendition is None:
-            self.rendition = data
-        else:
-            self.rendition = rendition
+        self.rendition = data.archive_rendition or data
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
+        if result is None:
+            return None
         result.update({
             'type': 'imagecontent',
             'mime_type': self.data.thumbnail_mime_type,
@@ -119,23 +121,27 @@ class IonMediaSerializer(IonSerializer):
     this serializer if you use a ``IonMedia`` class that has additional properties
     """
 
-    def __init__(self, name: str, data: AbstractIonMedia) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, data: AbstractIonMedia, **kwargs) -> None:
+        super().__init__(name, **kwargs)
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         container = IonContainerSerializer('mediacontainer_' + self.name, subtype='media')
 
-        if self.data.type == 'audio':
-            container.children.append(IonAudioSerializer('audio', self.data))
+        if self.data.file.storage.exists(self.data.file.name):
+            if self.data.type == 'audio':
+                container.children.append(IonAudioSerializer('audio', self.data))
+            else:
+                container.children.append(IonVideoSerializer('video', self.data))
+                container.children.append(IonVideoThumbnailSerializer('video_thumbnail', self.data))
         else:
-            container.children.append(IonVideoSerializer('video', self.data))
-            container.children.append(IonVideoThumbnailSerializer('video_thumbnail', self.data))
+            log_extra = {'media_filename': self.data.file.name}
+            logger.warning('Skipped missing media file', extra=log_extra, exc_info=True)
 
         return container.serialize()
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [AbstractIonMedia]
 
 
