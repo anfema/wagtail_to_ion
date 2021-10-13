@@ -123,7 +123,7 @@ class TarFile(TarData):
         yield bytes(self.header)
 
         if self.fp is not None:
-            for i in range(ceil(self.content/block_size)):
+            for i in range(ceil(self.filesize/block_size)):
                 yield self.fp.read(block_size)
 
         if self.filesize % 512 != 0:
