@@ -196,7 +196,7 @@ class TarWriter(StreamingHttpResponse):
     def add_item(self, item: TarData):
         self._items.append(item)
 
-    def data(self, block_size: int=512) -> Generator[bytes, None, None]:
+    def data(self, block_size: int=1024) -> Generator[bytes, None, None]:
         for item in self._items:
             for chunk in item.data(block_size=block_size):
                 yield chunk
