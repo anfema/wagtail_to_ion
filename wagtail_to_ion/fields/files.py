@@ -51,24 +51,18 @@ class IonFieldFile(FieldFile):
     @property
     def checksum(self) -> Optional[str]:
         """Returns the sha256 checksum of the file or `None` if the file is not available."""
-        if hasattr(self.field, 'checksum_field'):
-            return getattr(self.instance, self.field.checksum_field)
         self._require_file()
         return self._get_file_meta('checksum')
 
     @property
     def mime_type(self) -> Optional[str]:
         """Returns the detected mime type of the file or `None` if the file is not available."""
-        if hasattr(self.field, 'mime_type_field'):
-            return getattr(self.instance, self.field.mime_type_field)
         self._require_file()
         return self._get_file_meta('mime_type')
 
     @property
     def size(self) -> Optional[int]:
         """Returns the size of the file or `None` if the file is not available."""
-        if hasattr(self.field, 'file_size_field'):
-            return getattr(self.instance, self.field.file_size_field)
         self._require_file()
         if not self._committed:
             return self.file.size
@@ -77,8 +71,6 @@ class IonFieldFile(FieldFile):
     @property
     def last_modified(self) -> Optional[datetime.datetime]:
         """Returns the last modification time of the file or `None` if the file is not available."""
-        if hasattr(self.field, 'last_modified_field'):
-            return getattr(self.instance, self.field.last_modified_field)
         self._require_file()
         return self._get_file_meta('last_modified')
 
@@ -189,6 +181,21 @@ class IonFileField(FileField):
         ])
 
         if file_meta_fields_filled and not force:
+            # all fields are filled and force is not set; we are loading data from the database
+            # (see original comments in django.db.models.fields.files.ImageField.update_dimension_fields)
+            #
+            # prefill the file metadata cache to support access of metadata properties without any network calls
+            if file:
+                if not hasattr(file, '_file_meta_cache'):
+                    file._file_meta_cache = {}
+                if self.checksum_field:
+                    file._file_meta_cache['checksum'] = getattr(instance, self.checksum_field)
+                if self.mime_type_field:
+                    file._file_meta_cache['mime_type'] = getattr(instance, self.mime_type_field)
+                if self.file_size_field:
+                    file._file_meta_cache['size'] = getattr(instance, self.file_size_field)
+                if self.last_modified_field:
+                    file._file_meta_cache['last_modified'] = getattr(instance, self.last_modified_field)
             return
 
         if file:
