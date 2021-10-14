@@ -229,7 +229,7 @@ class TarWriter(StreamingHttpResponse):
     def add_item(self, item: TarData):
         self._items.append(item)
 
-    def data(self, block_size: int=1024) -> Generator[bytes, None, None]:
+    def data(self, block_size: int=1024*16) -> Generator[bytes, None, None]:
         with ThreadPool(processes=PARALLEL_THREADS) as pool:
             for c in chunk(self._items, PARALLEL_THREADS):
                 pool.map(self.prepare, c)
