@@ -8,7 +8,7 @@ from django.utils.module_loading import import_string
 
 from rest_framework.renderers import JSONRenderer
 
-from wagtail_to_ion.tar import TarWriter
+from wagtail_to_ion.tar import TarWriter, TarData, TarDir, TarStorageFile
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.serializers import DynamicPageDetailSerializer
 from wagtail_to_ion.serializers.pages import get_wagtail_panels_and_extra_fields
@@ -122,7 +122,7 @@ def collect_children(page, user=None):
     return result
 
 
-def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSerializer):
+def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSerializer) -> TarWriter:
     # build content json
     content = content_serializer(instance=page, context={'request': request})
     content = JSONRenderer().render(content.data)
@@ -164,23 +164,23 @@ def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSer
 
     # index file
     index_file = json.dumps(index_file).encode("utf-8")
-    tar.add_data(index_file, "index.json")
+    tar.add_item(TarData("index.json", index_file))
 
     # add toplevel data
-    tar.add_dir('pages')
-    tar.add_data(content, "pages/" + page.slug + ".json")
+    tar.add_item(TarDir("pages"))
+    tar.add_item(TarData(f"pages/{page.slug}.json", content))
 
     # add all files
     for f in collected_files:
-        tar.add_file_from_storage(f['file'], f['tar_name'])
+        tar.add_item(TarStorageFile(f['file'], f['tar_name']))
 
-    return tar.data()
+    return tar
 
 
 #
 # Collection TAR
 #
-def make_tar(pages, updated_pages, locale_code, request, content_serializer=DynamicPageDetailSerializer):
+def make_tar(pages, updated_pages, locale_code, request, content_serializer=DynamicPageDetailSerializer) -> TarWriter:
     # fetch all pages
     index_file = []
     content = []
@@ -203,23 +203,23 @@ def make_tar(pages, updated_pages, locale_code, request, content_serializer=Dyna
 
     # index file
     index_file = json.dumps(index_file).encode("utf-8")
-    tar.add_data(index_file, "index.json")
+    tar.add_item(TarData("index.json", index_file))
 
-    tar.add_dir('pages')
+    tar.add_item(TarDir("pages"))
 
     # add children data
     used_dirs = [os.path.dirname(f['tar_name']) for f in collected_files]
     for page in content:
-        tar.add_data(page['json'], 'pages/' + page['name'] + ".json", date=page['last_published'])
+        tar.add_item(TarData(f"pages/{page['name']}.json", page['json'], date=page['last_published']))
         page_dir = 'pages/' + page['name']
         if page_dir in used_dirs:
-            tar.add_dir(page_dir, date=page['last_published'])
+            tar.add_item(TarDir(page_dir, date=page['last_published']))
 
     # add all files
     for f in collected_files:
-        tar.add_file_from_storage(f['file'], f['tar_name'])
+        tar.add_item(TarStorageFile(f['file'], f['tar_name']))
 
-    return tar.data()
+    return tar
 
 
 def make_pagemeta(page, locale_code, request):

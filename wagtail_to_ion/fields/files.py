@@ -181,6 +181,21 @@ class IonFileField(FileField):
         ])
 
         if file_meta_fields_filled and not force:
+            # all fields are filled and force is not set; we are loading data from the database
+            # (see original comments in django.db.models.fields.files.ImageField.update_dimension_fields)
+            #
+            # prefill the file metadata cache to support access of metadata properties without any network calls
+            if file:
+                if not hasattr(file, '_file_meta_cache'):
+                    file._file_meta_cache = {}
+                if self.checksum_field:
+                    file._file_meta_cache['checksum'] = getattr(instance, self.checksum_field)
+                if self.mime_type_field:
+                    file._file_meta_cache['mime_type'] = getattr(instance, self.mime_type_field)
+                if self.file_size_field:
+                    file._file_meta_cache['size'] = getattr(instance, self.file_size_field)
+                if self.last_modified_field:
+                    file._file_meta_cache['last_modified'] = getattr(instance, self.last_modified_field)
             return
 
         if file:

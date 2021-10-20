@@ -8,7 +8,7 @@ from wagtail.core.models import Page
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.serializers import DynamicPageDetailSerializer, make_page_tar
 from wagtail_to_ion.models import get_ion_collection_model
-from wagtail_to_ion.views.mixins import TarResponseMixin, ListMixin
+from wagtail_to_ion.views.mixins import ListMixin
 from wagtail_to_ion.utils import visible_tree_by_user
 
 
@@ -55,7 +55,7 @@ class DynamicPageDetailView(generics.RetrieveAPIView):
         )
 
 
-class PageArchiveView(TarResponseMixin, ListMixin):
+class PageArchiveView(ListMixin):
     serializer_class = DynamicPageDetailSerializer
 
     @method_decorator(never_cache)
@@ -78,5 +78,4 @@ class PageArchiveView(TarResponseMixin, ListMixin):
 
         page_obj = pages.first()
 
-        tar = make_page_tar(page_obj, self.locale, request, content_serializer=self.serializer_class)
-        return self.render_to_tar_response(tar)
+        return make_page_tar(page_obj, self.locale, request, content_serializer=self.serializer_class)
