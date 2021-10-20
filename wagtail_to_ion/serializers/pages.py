@@ -30,17 +30,6 @@ replacements = [
 http_regex = re.compile(r'https?://.*')
 
 
-def get_stream_field_outlet_name(fieldname, block_type, count):
-    return "{type}_{fieldname}_{count}".format(fieldname=fieldname, type=block_type, count=str(count))
-
-
-def parse_correct_html(content_type):
-    content = str(content_type)
-    for (regex, replacement) in replacements:
-        content = regex.sub(replacement, content)
-    return content
-
-
 def get_wagtail_panels_and_extra_fields(obj) -> Iterable[Tuple[str, str, models.Model]]:
     """
     Get all page panels and other fields from `page.ion_extra_fields` to include.
