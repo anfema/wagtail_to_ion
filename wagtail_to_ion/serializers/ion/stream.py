@@ -1,10 +1,8 @@
 from __future__ import annotations
-from typing import List
-
-from wagtail_to_ion.serializers.ion.container import IonContainerSerializer
+from typing import List, Type
 
 from wagtail.core.blocks import StreamValue, StructValue
-from .base import IonSerializer, T
+from .base import IonSerializer
 from .container import IonContainerSerializer
 
 
@@ -16,15 +14,16 @@ class IonStreamValueSerializer(IonContainerSerializer):
     same block type in the stream field.
     """
 
-    def __init__(self, name:str, data: StreamValue) -> None:
-        super().__init__(name, subtype='streamblock')
+    index_children = True
+
+    def __init__(self, name:str, data: StreamValue, **kwargs) -> None:
+        super().__init__(name, subtype='streamblock', **kwargs)
         for idx, item in enumerate(data):
             item_name = str(item.block_type)
-            child = self.add_child(item_name, item.value)
-            child.index = idx
+            self.add_child(item_name, item.value)
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [StreamValue]
 
 
@@ -38,13 +37,13 @@ class IonStructValueSerializer(IonContainerSerializer):
     a struct is always named uniquely
     """
 
-    def __init__(self, name: str, data: StructValue) -> None:
-        super().__init__(name, subtype='structblock')
+    def __init__(self, name: str, data: StructValue, **kwargs) -> None:
+        super().__init__(name, subtype='structblock', **kwargs)
         for item_name, sub_data in data.bound_blocks.items():
             self.add_child(item_name, sub_data.value)
 
     @classmethod
-    def supported_types(cls) -> List[T]:
+    def supported_types(cls) -> List[Type]:
         return [StructValue]
 
 

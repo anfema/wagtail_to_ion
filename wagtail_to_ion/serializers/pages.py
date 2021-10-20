@@ -30,17 +30,6 @@ replacements = [
 http_regex = re.compile(r'https?://.*')
 
 
-def get_stream_field_outlet_name(fieldname, block_type, count):
-    return "{type}_{fieldname}_{count}".format(fieldname=fieldname, type=block_type, count=str(count))
-
-
-def parse_correct_html(content_type):
-    content = str(content_type)
-    for (regex, replacement) in replacements:
-        content = regex.sub(replacement, content)
-    return content
-
-
 def get_wagtail_panels_and_extra_fields(obj) -> Iterable[Tuple[str, str, models.Model]]:
     """
     Get all page panels and other fields from `page.ion_extra_fields` to include.
@@ -198,7 +187,11 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
 
     def build_tree(self, obj, request):
         # Create a top-level container
-        container = IonContainerSerializer('container_0')
+        context = {
+            'request': request,
+            'page': obj,
+        }
+        container = IonContainerSerializer('container_0', context=context)
 
         if obj is None:
             return container
@@ -214,7 +207,7 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         data = self.build_tree(obj, self.context.get('request', None))
         if data is None:
             return []
-        
+
         data = data.serialize()
 
         # optionally remap outlet names if needed (e.g. outlet should be called like a reserved word in python)
