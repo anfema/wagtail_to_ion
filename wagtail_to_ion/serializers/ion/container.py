@@ -97,3 +97,23 @@ class IonListSerializer(IonContainerSerializer):
 
 
 IonSerializer.register(IonListSerializer)
+
+
+class IonMappingSerializer(IonContainerSerializer):
+    """
+    This serializer handles generic mappings. It will always render a container of sub-type
+    ``structblock`` and will contain items without an index value as a single value in
+    a mapping is always named uniquely
+    """
+
+    def __init__(self, name: str, data: Mapping, **kwargs) -> None:
+        super().__init__(name, subtype='structblock', **kwargs)
+        for item_name, sub_data in data.items():
+            self.add_child(item_name, sub_data)
+
+    @classmethod
+    def supported_types(cls) -> List[Type]:
+        return [Mapping]
+
+
+IonSerializer.register(IonMappingSerializer)
