@@ -153,68 +153,38 @@ class IonFileField(FileField):
         self.last_modified_field = last_modified_field
         super().__init__(**kwargs)
 
-    def update_file_meta_fields(self, instance, force=False, *args, **kwargs):
-        # initialize attribute to store field names of new/changed files on the model instance
-        if '_ion_uploaded_file_fields' not in instance.__dict__:
-            instance.__dict__['_ion_uploaded_file_fields'] = set()
-
-        # implementation based on `ImageField.update_dimension_fields()`
-        has_file_meta_fields = any([
-            self.checksum_field,
-            self.mime_type_field,
-            self.file_size_field,
-            self.last_modified_field,
-        ])
-        if not has_file_meta_fields or self.attname not in instance.__dict__:
+    def update_file_meta_field(self, field_name: str, instance, force=False) -> None:
+        field = getattr(self, f'{field_name}_field', None)
+        if field is None:
             return
-
+        
         file = getattr(instance, self.attname)  # get file from file descriptor
 
         if not file and not force:
             return
 
-        file_meta_fields_filled = not any([
-            self.checksum_field and not getattr(instance, self.checksum_field),
-            self.mime_type_field and not getattr(instance, self.mime_type_field),
-            self.file_size_field and not getattr(instance, self.file_size_field),
-            self.last_modified_field and not getattr(instance, self.last_modified_field),
-        ])
+        # prefill the file metadata cache to support access of metadata properties without any network calls
+        if not hasattr(file, '_file_meta_cache'):
+            file._file_meta_cache = {}
 
-        if file_meta_fields_filled and not force:
-            # all fields are filled and force is not set; we are loading data from the database
-            # (see original comments in django.db.models.fields.files.ImageField.update_dimension_fields)
-            #
-            # prefill the file metadata cache to support access of metadata properties without any network calls
-            if file:
-                if not hasattr(file, '_file_meta_cache'):
-                    file._file_meta_cache = {}
-                if self.checksum_field:
-                    file._file_meta_cache['checksum'] = getattr(instance, self.checksum_field)
-                if self.mime_type_field:
-                    file._file_meta_cache['mime_type'] = getattr(instance, self.mime_type_field)
-                if self.file_size_field:
-                    file._file_meta_cache['size'] = getattr(instance, self.file_size_field)
-                if self.last_modified_field:
-                    file._file_meta_cache['last_modified'] = getattr(instance, self.last_modified_field)
+        value = getattr(instance, field)
+        file._file_meta_cache[field_name] = value
+        if value is None:
+            value = getattr(file, field_name, None)
+        
+        if value is not None:
+            setattr(instance, field, value)
+
+    def update_file_meta_fields(self, instance, force=False, *args, **kwargs):
+        # initialize attribute to store field names of new/changed files on the model instance
+        if '_ion_uploaded_file_fields' not in instance.__dict__:
+            instance.__dict__['_ion_uploaded_file_fields'] = set()
+
+        if self.attname not in instance.__dict__:
             return
 
-        if file:
-            checksum = file.checksum
-            mime_type = file.mime_type
-            file_size = file.size
-            last_modified = file.last_modified
-        else:
-            # No file, so clear file meta fields.
-            checksum, mime_type, file_size, last_modified = None, None, None, None
-
-        if self.checksum_field:
-            setattr(instance, self.checksum_field, checksum)
-        if self.mime_type_field:
-            setattr(instance, self.mime_type_field, mime_type)
-        if self.file_size_field:
-            setattr(instance, self.file_size_field, file_size)
-        if self.last_modified_field:
-            setattr(instance, self.last_modified_field, last_modified)
+        for field in ('checksum', 'mime_type', 'file_size', 'last_modified'):
+            self.update_file_meta_field(field, instance, force=force)
 
     def deconstruct(self):
         name, path, args, kwargs = super().deconstruct()
