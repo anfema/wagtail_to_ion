@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import weakref
-from typing import List, Any, Dict, ClassVar, Optional, Type, Deque, Mapping
+from typing import List, Any, Dict, ClassVar, Optional, Type, Deque, Mapping, Iterable, Set
 from collections import deque
 import json
+
+from wagtail_to_ion.models.file_based_models import IonFileContainerInterface
 
 
 class IonSerializationError(Exception):
@@ -12,6 +14,26 @@ class IonSerializationError(Exception):
     is no serializer registered for its type.
     """
     pass
+
+
+class IonSerializerAttachedFileInterface:
+    """
+    Interface for serializers with attached files.
+    """
+
+    _attached_files: Set[IonFileContainerInterface] = None  # Set of attached files; attached on successful serialization
+
+    @property
+    def attached_files(self):
+        if self._attached_files is None:
+            raise RuntimeError('Attached files are available after successful serialization')
+        return self._attached_files
+
+    def get_files(self) -> Iterable[IonFileContainerInterface]:
+        raise NotImplementedError
+
+    def attach_files(self):
+        self._attached_files = set(self.get_files())
 
 
 class IonSerializer:

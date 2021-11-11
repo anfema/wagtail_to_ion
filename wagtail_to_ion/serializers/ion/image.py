@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Any, Dict, Optional, Type
+from typing import List, Any, Dict, Optional, Type, Iterable
 
 from wagtail_to_ion.conf import settings
-from wagtail_to_ion.models.file_based_models import AbstractIonImage
-from .base import IonSerializer
+from wagtail_to_ion.models.file_based_models import AbstractIonImage, IonFileContainerInterface
+
+from .base import IonSerializer, IonSerializerAttachedFileInterface
 
 
 logger = logging.getLogger(__name__)
 
 
-class IonImageSerializer(IonSerializer):
+class IonImageSerializer(IonSerializerAttachedFileInterface, IonSerializer):
     """
     This serializer handles `AbstractIonImage` instances, you want to override
     this serializer if you use a ``IonImage`` class that has additional properties
@@ -21,6 +22,9 @@ class IonImageSerializer(IonSerializer):
         super().__init__(name, **kwargs)
         self.data = data
         self.archive = data.archive_rendition
+
+    def get_files(self) -> Iterable[IonFileContainerInterface]:
+        return [self.archive]
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
@@ -67,6 +71,8 @@ class IonImageSerializer(IonSerializer):
         result['translation_x'] = 0
         result['translation_y'] = 0
         result['scale'] = 1.0
+
+        self.attach_files()
 
         return result
 

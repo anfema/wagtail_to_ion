@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Any, Dict, Optional, Type
+from typing import List, Any, Dict, Optional, Type, Iterable
 
 from wagtail_to_ion.conf import settings
-from wagtail_to_ion.models.file_based_models import AbstractIonMedia
-from .base import IonSerializer
+from wagtail_to_ion.models.file_based_models import AbstractIonMedia, IonFileContainerInterface
+
+from .base import IonSerializer, IonSerializerAttachedFileInterface
 from .container import IonContainerSerializer
 
 
 logger = logging.getLogger(__name__)
 
 
-class IonAudioSerializer(IonSerializer):
+class IonAudioSerializer(IonSerializerAttachedFileInterface, IonSerializer):
     """
     This is a sub-serializer to render audio objects, this serializer is not registered
     with the registry as it handles only a part of a media object
@@ -21,6 +22,9 @@ class IonAudioSerializer(IonSerializer):
     def __init__(self, name: str, data: AbstractIonMedia, **kwargs) -> None:
         super().__init__(name, **kwargs)
         self.data = data
+
+    def get_files(self) -> Iterable[IonFileContainerInterface]:
+        return [self.data]
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
@@ -40,10 +44,11 @@ class IonAudioSerializer(IonSerializer):
             'original_length': self.data.duration,
             'original_file_size': self.data.file_size,
         })
+        self.attach_files()
         return result
 
 
-class IonVideoSerializer(IonSerializer):
+class IonVideoSerializer(IonSerializerAttachedFileInterface, IonSerializer):
     """
     This is a sub-serializer to render video objects, this serializer is not registered
     with the registry as it handles only a part of a media object
@@ -53,6 +58,9 @@ class IonVideoSerializer(IonSerializer):
         super().__init__(name, **kwargs)
         self.data = data
         self.rendition = data.archive_rendition or data
+
+    def get_files(self) -> Iterable[IonFileContainerInterface]:
+        return [self.rendition]
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
@@ -76,10 +84,11 @@ class IonVideoSerializer(IonSerializer):
             'original_length': self.data.duration,
             'original_file_size': self.data.file_size,
         })
+        self.attach_files()
         return result
 
 
-class IonVideoThumbnailSerializer(IonSerializer):
+class IonVideoThumbnailSerializer(IonSerializerAttachedFileInterface, IonSerializer):
     """
     This is a sub-serializer to render thumbnail image objects, this serializer
     is not registered with the registry as it handles only a part of a media object
@@ -89,6 +98,9 @@ class IonVideoThumbnailSerializer(IonSerializer):
         super().__init__(name, **kwargs)
         self.data = data
         self.rendition = data.archive_rendition or data
+
+    def get_files(self) -> Iterable[IonFileContainerInterface]:
+        return [self.rendition]
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
@@ -112,6 +124,7 @@ class IonVideoThumbnailSerializer(IonSerializer):
             'translation_y': 0,
             'scale': 1.0,
         })
+        self.attach_files()
         return result
 
 
