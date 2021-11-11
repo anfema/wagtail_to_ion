@@ -11,6 +11,7 @@ from rest_framework.renderers import JSONRenderer
 from wagtail_to_ion.tar import TarWriter, TarData, TarDir, TarStorageFile
 from wagtail_to_ion.conf import settings
 from wagtail_to_ion.serializers import DynamicPageDetailSerializer
+from wagtail_to_ion.serializers.ion.base import IonSerializerAttachedFileInterface
 from wagtail_to_ion.serializers.pages import get_wagtail_panels_and_extra_fields
 from wagtail_to_ion.utils import get_collection_for_page
 
@@ -28,6 +29,24 @@ else:
             'slug': page.slug,
         })
         return request.build_absolute_uri(url) + "?variation={}".format(variation)
+
+
+def _collect_files_from_serializer_tree(ion_serializer):
+    if isinstance(ion_serializer, IonSerializerAttachedFileInterface):
+        yield from ion_serializer.attached_files
+    if hasattr(ion_serializer, 'children'):
+        for child_serializer in ion_serializer.children:
+            yield from _collect_files_from_serializer_tree(child_serializer)
+
+
+def collect_files_from_tree(page, request, ion_serializer_tree):
+    for file_container in _collect_files_from_serializer_tree(ion_serializer_tree):
+        yield {
+            'url': request.build_absolute_uri(file_container.url),
+            'page': page.slug,
+            'checksum': file_container.checksum,
+            'file': file_container.file,
+        }
 
 
 def collect_files(request, page, collected_files, user):
@@ -125,7 +144,7 @@ def collect_children(page, user=None):
 def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSerializer) -> TarWriter:
     # build content json
     content = content_serializer(instance=page, context={'request': request})
-    content = JSONRenderer().render(content.data)
+    content_json = JSONRenderer().render(content.data)
     user = request.user
 
     # create index
@@ -139,7 +158,7 @@ def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSer
 
     # collect all files
     collected_files = []
-    collect_files(request, page, collected_files, user)
+    collected_files.extend(collect_files_from_tree(page, request, content.ion_serializer_tree))
     i = {}
     for f in collected_files:
         if f["page"] not in i:
@@ -168,7 +187,7 @@ def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSer
 
     # add toplevel data
     tar.add_item(TarDir("pages"))
-    tar.add_item(TarData(f"pages/{page.slug}.json", content))
+    tar.add_item(TarData(f"pages/{page.slug}.json", content_json))
 
     # add all files
     for f in collected_files:
@@ -187,12 +206,24 @@ def make_tar(pages, updated_pages, locale_code, request, content_serializer=Dyna
     collected_files = []
 
     for page in pages:
-        index, files = make_pagemeta(page, locale_code, request)
+        index = make_pagemeta(page, locale_code, request)
         index_file.extend(index)
         if page in updated_pages:
-            page_content = make_pagecontent(page, request, content_serializer=content_serializer)
+            page_content, files = make_pagecontent(page, request, content_serializer=content_serializer)
             content.extend(page_content)
             collected_files.extend(files)
+
+    i = {}
+    for f in collected_files:
+        if f['page'] not in i:
+            i[f['page']] = 0
+        f['tar_name'] = 'pages/' + f['page'] + '/' + str(i[f['page']])
+        i[f['page']] = i[f['page']] + 1
+        index_file.append({
+            'url': request.build_absolute_uri(f['url']),
+            'name': f['tar_name'],
+            'checksum': f['checksum'],
+        })
 
     # de-duplicate
     collected_files = dedup_files(collected_files)
@@ -234,32 +265,17 @@ def make_pagemeta(page, locale_code, request):
         "name": "pages/" + page.slug + ".json"
     })
 
-    # collect all files
-    collected_files = []
-    collect_files(request, page, collected_files, user)
-    i = {}
-    for f in collected_files:
-        if f["page"] not in i:
-            i[f["page"]] = 0
-        f['tar_name'] = "pages/" + f["page"] + "/" + str(i[f["page"]])
-        i[f["page"]] = i[f["page"]] + 1
-        index_file.append({
-            "url": request.build_absolute_uri(f['url']),
-            "name": f['tar_name'],
-            "checksum": f['checksum']
-        })
-
-    return index_file, collected_files
+    return index_file
 
 
 def make_pagecontent(page, request, content_serializer=DynamicPageDetailSerializer):
     # build content json
     content = content_serializer(instance=page, context={'request': request})  # FIXME: may be overridden
 
-    content = [{
+    content_dict = [{
         "json": (JSONRenderer().render(content.data).decode('utf-8')).encode('utf-8'),
         "name": page.slug,
         "last_published": page.last_published_at
     }]
 
-    return content
+    return content_dict, collect_files_from_tree(page, request, content.ion_serializer_tree)
