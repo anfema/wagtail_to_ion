@@ -35,6 +35,9 @@ class IonSerializerAttachedFileInterface:
     def attach_files(self):
         self._attached_files = set(self.get_files())
 
+    def clear_files(self):
+        self._attached_files = set()
+
 
 class IonSerializer:
     """

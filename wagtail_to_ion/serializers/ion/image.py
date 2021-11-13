@@ -45,6 +45,7 @@ class IonImageSerializer(IonSerializerAttachedFileInterface, IonSerializer):
             result['original_width'] = self.data.width
             result['original_height'] = self.data.height
             result['original_file_size'] = self.data.file_size
+            self.attach_files()
         except Exception as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
                 log_extra = {
@@ -65,14 +66,13 @@ class IonImageSerializer(IonSerializerAttachedFileInterface, IonSerializer):
                 result['original_width'] = 0
                 result['original_height'] = 0
                 result['original_file_size'] = 0
+                self.clear_files()
             else:
                 raise e
 
         result['translation_x'] = 0
         result['translation_y'] = 0
         result['scale'] = 1.0
-
-        self.attach_files()
 
         return result
 
