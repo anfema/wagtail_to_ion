@@ -24,7 +24,7 @@ class IonImageSerializer(IonSerializerAttachedFileInterface, IonSerializer):
         self.archive = data.archive_rendition
 
     def get_files(self) -> Iterable[IonFileContainerInterface]:
-        return [self.archive]
+        return [self.archive] if self.data.include_in_archive else []
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()

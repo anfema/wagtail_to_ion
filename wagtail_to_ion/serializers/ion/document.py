@@ -23,7 +23,7 @@ class IonDocumentSerializer(IonSerializerAttachedFileInterface, IonSerializer):
         self.data = data
 
     def get_files(self) -> Iterable[IonFileContainerInterface]:
-        return [self.data]
+        return [self.data] if self.data.include_in_archive else []
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()

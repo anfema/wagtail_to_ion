@@ -24,7 +24,7 @@ class IonAudioSerializer(IonSerializerAttachedFileInterface, IonSerializer):
         self.data = data
 
     def get_files(self) -> Iterable[IonFileContainerInterface]:
-        return [self.data]
+        return [self.data] if self.data.include_in_archive else []
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
@@ -60,7 +60,7 @@ class IonVideoSerializer(IonSerializerAttachedFileInterface, IonSerializer):
         self.rendition = data.archive_rendition or data
 
     def get_files(self) -> Iterable[IonFileContainerInterface]:
-        return [self.rendition]
+        return [self.rendition] if self.data.include_in_archive else []
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
@@ -100,7 +100,7 @@ class IonVideoThumbnailSerializer(IonSerializerAttachedFileInterface, IonSeriali
         self.rendition = data.archive_rendition or data
 
     def get_files(self) -> Iterable[IonFileContainerInterface]:
-        return [self.rendition]
+        return [self.rendition] if self.data.include_in_archive else []
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
