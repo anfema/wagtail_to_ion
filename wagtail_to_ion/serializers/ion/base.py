@@ -33,7 +33,7 @@ class IonSerializerAttachedFileInterface:
         raise NotImplementedError
 
     def attach_files(self):
-        self._attached_files = set(self.get_files())
+        self._attached_files = set(file for file in self.get_files() if file.include_in_archive)
 
     def clear_files(self):
         self._attached_files = set()

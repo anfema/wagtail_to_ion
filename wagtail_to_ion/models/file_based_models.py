@@ -39,7 +39,7 @@ THUMBNAIL_META_FIELDS = {
 
 
 class IonFileContainerInterface:
-    pass
+    include_in_archive: bool
 
 
 class AbstractIonDocument(IonFileContainerInterface, AbstractDocument):
