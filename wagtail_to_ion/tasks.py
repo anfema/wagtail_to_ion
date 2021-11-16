@@ -62,7 +62,7 @@ def generate_media_thumbnail(media_id: int):
 
     try:
         metadata = ffmpeg_jobs.extract_video_metadata(source_file_path)
-        ffmpeg_jobs.extract_video_thumbnail(source_file_path, thumbnail_path)
+        ffmpeg_jobs.extract_video_thumbnail(source_file_path, thumbnail_path, metadata.duration)
         media.thumbnail.save(name=thumbnail_filename, content=File(thumbnail_path.open('rb')), save=False)
         media.width = metadata.width
         media.height = metadata.height
@@ -95,7 +95,7 @@ def generate_media_rendition(rendition_id: int):
         metadata = ffmpeg_jobs.extract_video_metadata(source_file_path)
         ffmpeg_jobs.transcode_video(source_file_path, rendition_path, metadata, rendition.transcode_settings)
         rendition_metadata = ffmpeg_jobs.extract_video_metadata(rendition_path)
-        ffmpeg_jobs.extract_video_thumbnail(rendition_path, thumbnail_path)
+        ffmpeg_jobs.extract_video_thumbnail(rendition_path, thumbnail_path, rendition_metadata.duration)
 
         rendition.file.save(rendition_filename, File(rendition_path.open('rb')), save=False)
         rendition.width = rendition_metadata.width
