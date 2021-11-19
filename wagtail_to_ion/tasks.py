@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from .conf import settings
 from typing import TYPE_CHECKING, Tuple
 
 from django.core.files import File
@@ -30,14 +30,14 @@ def new_empty_thumbnail(suffix) -> ContentFile:
     return ContentFile(data, name=f'blank-{suffix}.jpg')
 
 
-def setup_work_dir(file: FieldFile) -> Tuple[TemporaryDirectory, Path]:
-    """Create a temporary directory as working directory and make the source file locally available."""
-    temp_dir = TemporaryDirectory()
+def setup_work_dir(file: FieldFile) -> Tuple[Path, Path]:
+    """Make the source file locally available."""
+    temp_dir = Path(settings.ION_TRANSCODE_DIR)
 
     try:
         source_file_path = Path(file.path)
     except (AttributeError, NotImplementedError):
-        source_file_path = Path(temp_dir.name) / Path(file.name).name
+        source_file_path = temp_dir / Path(file.name).name
 
         with source_file_path.open('wb') as fp:
             if file.multiple_chunks():
@@ -58,7 +58,7 @@ def generate_media_thumbnail(media_id: int):
     work_dir, source_file_path = setup_work_dir(media.file)
 
     thumbnail_filename = f'{source_file_path.stem}-thumb.jpg'
-    thumbnail_path = Path(work_dir.name) / thumbnail_filename
+    thumbnail_path = work_dir / thumbnail_filename
 
     try:
         metadata = ffmpeg_jobs.extract_video_metadata(source_file_path)
@@ -74,7 +74,10 @@ def generate_media_thumbnail(media_id: int):
             media.thumbnail.save(name=empty_thumbnail.name, content=empty_thumbnail, save=False)
             media.save()
     finally:
-        work_dir.cleanup()
+        if thumbnail_path.exists():
+            thumbnail_path.unlink()
+        if source_file_path.exists():
+            source_file_path.unlink()        
 
 
 @shared_task
@@ -86,10 +89,10 @@ def generate_media_rendition(rendition_id: int):
     work_dir, source_file_path = setup_work_dir(rendition.media_item.file)
 
     rendition_filename = f'{source_file_path.stem}-{rendition.name}.{rendition.transcode_settings["container"]}'
-    rendition_path = Path(work_dir.name) / rendition_filename
+    rendition_path = work_dir / rendition_filename
 
     thumbnail_filename = f'{source_file_path.stem}-{rendition.name}.jpg'
-    thumbnail_path = Path(work_dir.name) / thumbnail_filename
+    thumbnail_path = work_dir / thumbnail_filename
 
     try:
         metadata = ffmpeg_jobs.extract_video_metadata(source_file_path)
@@ -107,7 +110,12 @@ def generate_media_rendition(rendition_id: int):
         rendition.transcode_errors = str(e)
         rendition.save()
     finally:
-        work_dir.cleanup()
+        if rendition_path.exists():
+            rendition_path.unlink()
+        if thumbnail_path.exists():
+            thumbnail_path.unlink()
+        if source_file_path.exists():
+            source_file_path.unlink()
 
 
 @shared_task
@@ -116,7 +124,7 @@ def regenerate_rendition_thumbnail(rendition: AbstractIonMediaRendition):
     work_dir, source_file_path = setup_work_dir(rendition.file)
 
     thumbnail_filename = Path(rendition.thumbnail.name).name
-    thumbnail_path = Path(work_dir.name) / thumbnail_filename
+    thumbnail_path = work_dir / thumbnail_filename
 
     try:
         ffmpeg_jobs.extract_video_thumbnail(source_file_path, thumbnail_path)
@@ -126,7 +134,10 @@ def regenerate_rendition_thumbnail(rendition: AbstractIonMediaRendition):
         rendition.transcode_errors = str(e)
         rendition.save()
     finally:
-        work_dir.cleanup()
+        if thumbnail_path.exists():
+            thumbnail_path.unlink()
+        if source_file_path.exists():
+            source_file_path.unlink()
 
 
 @shared_task
@@ -143,4 +154,5 @@ def get_audio_metadata(media_id: int):
     except ffmpeg_jobs.CodecProcessError:
         pass
     finally:
-        work_dir.cleanup()
+        if source_file_path.exists():
+            source_file_path.unlink()
