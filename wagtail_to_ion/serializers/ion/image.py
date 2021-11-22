@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Any, Dict, Optional, Type
+from typing import List, Any, Dict, Optional, Type, Iterable
 
 from wagtail_to_ion.conf import settings
-from wagtail_to_ion.models.file_based_models import AbstractIonImage
-from .base import IonSerializer
+from wagtail_to_ion.models.file_based_models import AbstractIonImage, IonFileContainerInterface
+
+from .base import IonSerializer, IonSerializerAttachedFileInterface
 
 
 logger = logging.getLogger(__name__)
 
 
-class IonImageSerializer(IonSerializer):
+class IonImageSerializer(IonSerializerAttachedFileInterface, IonSerializer):
     """
     This serializer handles `AbstractIonImage` instances, you want to override
     this serializer if you use a ``IonImage`` class that has additional properties
@@ -21,6 +22,9 @@ class IonImageSerializer(IonSerializer):
         super().__init__(name, **kwargs)
         self.data = data
         self.archive = data.archive_rendition
+
+    def get_files(self) -> Iterable[IonFileContainerInterface]:
+        return [self.archive] if self.data.include_in_archive else []
 
     def serialize(self) -> Optional[Dict[str, Any]]:
         result = super().serialize()
@@ -41,6 +45,7 @@ class IonImageSerializer(IonSerializer):
             result['original_width'] = self.data.width
             result['original_height'] = self.data.height
             result['original_file_size'] = self.data.file_size
+            self.attach_files()
         except Exception as e:
             if settings.ION_ALLOW_MISSING_FILES is True:
                 log_extra = {
@@ -61,6 +66,7 @@ class IonImageSerializer(IonSerializer):
                 result['original_width'] = 0
                 result['original_height'] = 0
                 result['original_file_size'] = 0
+                self.clear_files()
             else:
                 raise e
 

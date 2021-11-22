@@ -38,7 +38,11 @@ THUMBNAIL_META_FIELDS = {
 }
 
 
-class AbstractIonDocument(AbstractDocument):
+class IonFileContainerInterface:
+    include_in_archive: bool
+
+
+class AbstractIonDocument(IonFileContainerInterface, AbstractDocument):
     file = IonFileField(
         upload_to='documents',
         verbose_name=_('file'),
@@ -66,7 +70,7 @@ class AbstractIonDocument(AbstractDocument):
         return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
 
 
-class AbstractIonImage(AbstractImage):
+class AbstractIonImage(IonFileContainerInterface, AbstractImage):
     file = IonImageField(
         upload_to=get_upload_to,
         verbose_name=_('file'),
@@ -114,7 +118,7 @@ class AbstractIonImage(AbstractImage):
         return result
 
 
-class AbstractIonRendition(AbstractRendition):
+class AbstractIonRendition(IonFileContainerInterface, AbstractRendition):
     image = models.ForeignKey(settings.WAGTAILIMAGES_IMAGE_MODEL, related_name='renditions', on_delete=models.CASCADE)
     file = IonImageField(
         upload_to=get_rendition_upload_to,
@@ -134,7 +138,7 @@ class AbstractIonRendition(AbstractRendition):
         )
 
 
-class AbstractIonMedia(AbstractMedia):
+class AbstractIonMedia(IonFileContainerInterface, AbstractMedia):
     file = IonFileField(
         upload_to='media',
         verbose_name=_('file'),
@@ -217,7 +221,7 @@ class AbstractIonMedia(AbstractMedia):
             )
 
 
-class AbstractIonMediaRendition(models.Model):
+class AbstractIonMediaRendition(IonFileContainerInterface, models.Model):
     name = models.CharField(
         max_length=128,
         choices=zip(

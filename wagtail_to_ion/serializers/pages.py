@@ -3,6 +3,9 @@ import logging
 import re
 from datetime import datetime, date
 from typing import Iterable, Tuple
+
+from django.utils.functional import cached_property
+
 from wagtail_to_ion.serializers.ion.container import IonContainerSerializer
 
 from django.db import models
@@ -148,6 +151,10 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
     contents = serializers.SerializerMethodField()
     children = serializers.SerializerMethodField()
 
+    @cached_property
+    def ion_serializer_tree(self):
+        return self.build_tree(self.instance, self.context['request'])
+
     def get_collection(self, obj):
         return get_collection_for_page(obj)
 
@@ -203,12 +210,10 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         return container
 
     def get_contents(self, obj):
-        # serialize into a ``dict`` with simple data types
-        data = self.build_tree(obj, self.context.get('request', None))
-        if data is None:
+        if self.ion_serializer_tree is None:
             return []
 
-        data = data.serialize()
+        data = self.ion_serializer_tree.serialize()
 
         # optionally remap outlet names if needed (e.g. outlet should be called like a reserved word in python)
         self.remap_outlet_names_recursive(data, [])

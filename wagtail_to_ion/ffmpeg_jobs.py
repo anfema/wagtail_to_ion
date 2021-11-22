@@ -92,7 +92,14 @@ def extract_video_metadata(input_path: Path) -> Optional[VideoMetaData]:
         raise CodecProcessError(errors)
 
 
-def extract_video_thumbnail(input_path: Path, output_path: Path):
+def extract_video_thumbnail(input_path: Path, output_path: Path, video_duration: Optional[int] = None):
+    if video_duration is None:
+        metadata = extract_video_metadata(input_path)
+        video_duration = metadata.duration
+
+    # use the first frame for short videos else the one at 2 seconds
+    thumbnail_pos = '00:00:02.000' if video_duration > 5 else '00:00:00.000'
+
     # generate media thumbnail
     head = [
         ffmpeg,
@@ -101,7 +108,7 @@ def extract_video_thumbnail(input_path: Path, output_path: Path):
     thumbnail = [
         '-y',
         '-vframes', '1',
-        '-ss', '00:00:02.000',
+        '-ss', thumbnail_pos,
         '-an',
         str(output_path),
     ]
