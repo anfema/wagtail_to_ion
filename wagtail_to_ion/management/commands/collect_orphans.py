@@ -257,7 +257,10 @@ class FileItem(Item):
 class UnusedFileItem(UnusedItem, FileItem):
 
     def remove(self) -> None:
-        os.unlink(self.filename)
+        try:
+            os.unlink(self.filename)
+        except FileNotFoundError:
+            pass
 
 
 class DjangoFileFieldItem(Item):
