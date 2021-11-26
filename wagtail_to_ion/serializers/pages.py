@@ -85,6 +85,8 @@ class DynamicPageSerializer(serializers.ModelSerializer):
         return obj.slug
 
     def get_last_changed(self, obj):
+        if obj.last_published_at is None:
+            return "1970-01-01T00:00:00Z"
         return isoDate(obj.last_published_at)
 
     def get_layout(self, obj):
