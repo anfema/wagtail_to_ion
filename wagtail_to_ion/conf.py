@@ -1,6 +1,6 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
 from django.conf import settings
-from tempfile import TemporaryDirectory
+from tempfile import mkdtemp
 
 settings.GET_PAGES_BY_USER = getattr(
     settings,
@@ -30,5 +30,5 @@ settings.ION_ARCHIVE_BUILD_URL_FUNCTION = getattr(
 settings.ION_TRANSCODE_DIR = getattr(
     settings,
     'ION_TRANSCODE_DIR',
-    TemporaryDirectory().name
+    mkdtemp()
 )
