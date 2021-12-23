@@ -169,8 +169,16 @@ def transcode_video(input_path: Path, output_path: Path, meta_data: VideoMetaDat
 
     w = config['video']['size'][0]
     h = config['video']['size'][1]
+
     if meta_data.height > meta_data.width:
         w, h = h, w  # portrait mode video, rotate the scaler
+
+    if w == -1:
+        # calculate and round the width according to aspect ratio
+        w = (meta_data.width / meta_data.height * h) // 2 * 2
+    if h == -1:
+        # calculate and round the height according to aspect ratio
+        h = (meta_data.height / meta_data.width * w) // 2 * 2
 
     scaler = [
         '-filter:v',
