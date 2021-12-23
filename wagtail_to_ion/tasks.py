@@ -49,6 +49,17 @@ def setup_work_dir(file: FieldFile) -> Tuple[Path, Path]:
     return temp_dir, source_file_path
 
 
+def cleanup_work_dir(file: FieldFile) -> None:
+    try:
+        _ = file.path
+    except (AttributeError, NotImplementedError):
+        # This is a remote file, so we want to delete the source file
+        temp_dir = Path(settings.ION_TRANSCODE_DIR)
+        source_file_path = temp_dir / Path(file.name).name
+        if source_file_path.exists():
+            source_file_path.unlink()        
+
+
 @shared_task
 def generate_media_thumbnail(media_id: int):
     """Generate thumbnail from video and set media metadata."""
@@ -76,8 +87,7 @@ def generate_media_thumbnail(media_id: int):
     finally:
         if thumbnail_path.exists():
             thumbnail_path.unlink()
-        if source_file_path.exists():
-            source_file_path.unlink()        
+        cleanup_work_dir(media.file)
 
 
 @shared_task
@@ -114,8 +124,7 @@ def generate_media_rendition(rendition_id: int):
             rendition_path.unlink()
         if thumbnail_path.exists():
             thumbnail_path.unlink()
-        if source_file_path.exists():
-            source_file_path.unlink()
+        cleanup_work_dir(rendition.media_item.file)
 
 
 @shared_task
@@ -136,8 +145,7 @@ def regenerate_rendition_thumbnail(rendition: AbstractIonMediaRendition):
     finally:
         if thumbnail_path.exists():
             thumbnail_path.unlink()
-        if source_file_path.exists():
-            source_file_path.unlink()
+        cleanup_work_dir(rendition.file)
 
 
 @shared_task
@@ -154,5 +162,4 @@ def get_audio_metadata(media_id: int):
     except ffmpeg_jobs.CodecProcessError:
         pass
     finally:
-        if source_file_path.exists():
-            source_file_path.unlink()
+        cleanup_work_dir(media.file)
