@@ -21,7 +21,7 @@ class IonDateTimeSerializer(IonSerializer):
             return None
         result['type'] = 'datetimecontent'
 
-        if isinstance(self.data, date) and not isinstance(date, datetime):
+        if isinstance(self.data, date) and not isinstance(self.data, datetime):
             result['datetime'] = isoDate(datetime(self.data.year, month=self.data.month, day=self.data.day))
         else:
             result['datetime'] = isoDate(self.data)
