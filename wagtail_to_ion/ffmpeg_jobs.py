@@ -180,6 +180,12 @@ def transcode_video(input_path: Path, output_path: Path, meta_data: VideoMetaDat
         # calculate and round the height according to aspect ratio
         h = (meta_data.height / meta_data.width * w) // 2 * 2
 
+    # if dimensions of original video exceed an aspect ration of 21:9, create
+    # the rendition with original size as we are handling a banner most likely
+    if (w / h) > 21.0 / 9.0 or (h / w) > 21.0 / 9.0:
+        w = meta_data.width
+        h = meta_data.height
+
     scaler = [
         '-filter:v',
         'scale={}:{}'.format(w, h)
