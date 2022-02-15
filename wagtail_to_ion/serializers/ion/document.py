@@ -33,7 +33,7 @@ class IonDocumentSerializer(IonSerializerAttachedFileInterface, IonSerializer):
         result['name'] = self.data.title
 
         try:
-            result['file'] = settings.BASE_URL + self.data.file.url
+            result['file'] = self.context['request'].build_absolute_uri(self.data.file.url)
             result['file_size'] = self.data.file_size
             result['checksum'] = self.data.checksum
             result['mime_type'] = self.data.mime_type

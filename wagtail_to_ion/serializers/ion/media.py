@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from typing import List, Any, Dict, Optional, Type, Iterable
 
-from wagtail_to_ion.conf import settings
 from wagtail_to_ion.models.file_based_models import AbstractIonMedia, IonFileContainerInterface
 
 from .base import IonSerializer, IonSerializerAttachedFileInterface
@@ -33,13 +32,13 @@ class IonAudioSerializer(IonSerializerAttachedFileInterface, IonSerializer):
         result.update({
             'type': 'mediacontent',
             'mime_type': self.data.mime_type,
-            'file': settings.BASE_URL + self.data.file.url,
+            'file': self.context['request'].build_absolute_uri(self.data.file.url),
             'checksum': self.data.checksum,
             'length': self.data.duration,
             'file_size': self.data.file_size,
             'name': self.data.title,
             'original_mime_type': self.data.mime_type,
-            'original_file': settings.BASE_URL + self.data.file.url,
+            'original_file': self.context['request'].build_absolute_uri(self.data.file.url),
             'original_checksum': self.data.checksum,
             'original_length': self.data.duration,
             'original_file_size': self.data.file_size,
@@ -69,7 +68,7 @@ class IonVideoSerializer(IonSerializerAttachedFileInterface, IonSerializer):
         result.update({
             'type': 'mediacontent',
             'mime_type': self.data.mime_type,
-            'file': settings.BASE_URL + self.rendition.file.url,
+            'file': self.context['request'].build_absolute_uri(self.rendition.file.url),
             'checksum': self.rendition.checksum,
             'width': self.rendition.width if self.rendition.width else 0,
             'height': self.rendition.height if self.rendition.height else 0,
@@ -77,7 +76,7 @@ class IonVideoSerializer(IonSerializerAttachedFileInterface, IonSerializer):
             'file_size': self.rendition.file_size,
             'name': self.data.title,
             'original_mime_type': self.data.mime_type,
-            'original_file': settings.BASE_URL + self.data.file.url,
+            'original_file': self.context['request'].build_absolute_uri(self.data.file.url),
             'original_checksum': self.data.checksum,
             'original_width': self.data.width if self.data.width else 0,
             'original_height': self.data.height if self.data.height else 0,
@@ -109,13 +108,13 @@ class IonVideoThumbnailSerializer(IonSerializerAttachedFileInterface, IonSeriali
         result.update({
             'type': 'imagecontent',
             'mime_type': self.data.thumbnail_mime_type,
-            'image': settings.BASE_URL + self.rendition.thumbnail.url,
+            'image': self.context['request'].build_absolute_uri(self.rendition.thumbnail.url),
             'checksum': self.rendition.thumbnail_checksum,
             'width': self.rendition.width,
             'height': self.rendition.height,
             'file_size': self.rendition.thumbnail.size,
             'original_mime_type': self.data.thumbnail_mime_type,
-            'original_image': settings.BASE_URL + self.data.thumbnail.url,
+            'original_image': self.context['request'].build_absolute_uri(self.data.thumbnail.url),
             'original_checksum': self.data.thumbnail_checksum,
             'original_width': self.data.width,
             'original_height': self.data.height,
@@ -139,13 +138,13 @@ class IonMediaSerializer(IonSerializer):
         self.data = data
 
     def serialize(self) -> Optional[Dict[str, Any]]:
-        container = IonContainerSerializer('mediacontainer_' + self.name, subtype='media')
+        container = IonContainerSerializer('mediacontainer_' + self.name, subtype='media', parent=self.parent)
 
         if self.data.type == 'audio':
-            container.children.append(IonAudioSerializer('audio', self.data))
+            container.children.append(IonAudioSerializer('audio', self.data, parent=container))
         else:
-            container.children.append(IonVideoSerializer('video', self.data))
-            container.children.append(IonVideoThumbnailSerializer('video_thumbnail', self.data))
+            container.children.append(IonVideoSerializer('video', self.data, parent=container))
+            container.children.append(IonVideoThumbnailSerializer('video_thumbnail', self.data, parent=container))
 
         return container.serialize()
 

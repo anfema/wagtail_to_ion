@@ -34,9 +34,9 @@ class IonImageSerializer(IonSerializerAttachedFileInterface, IonSerializer):
 
         try:
             result['mime_type'] = self.archive.mime_type
-            result['image'] = settings.BASE_URL + self.archive.file.url
+            result['image'] = self.context['request'].build_absolute_uri(self.archive.file.url)
             result['file_size'] = self.archive.file_size
-            result['original_image'] = settings.BASE_URL + self.data.file.url
+            result['original_image'] = self.context['request'].build_absolute_uri(self.data.file.url)
             result['checksum'] = self.archive.checksum
             result['width'] = self.archive.width
             result['height'] = self.archive.height
