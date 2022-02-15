@@ -140,12 +140,6 @@ class DynamicPageSerializer(serializers.ModelSerializer):
         fields = ('identifier', 'parent', 'last_changed', 'layout', 'meta')
 
 
-def fill_contents(content, wrapping):
-    content['variation'] = 'default'
-    content['is_searchable'] = False
-    wrapping['children'].append(content)
-
-
 class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
     collection = serializers.SerializerMethodField()
     archive = serializers.SerializerMethodField()
