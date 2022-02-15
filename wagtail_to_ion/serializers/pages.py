@@ -63,13 +63,6 @@ def get_wagtail_panels_and_extra_fields(obj) -> Iterable[Tuple[str, str, models.
             yield field.field_name, field.field_name, obj.specific
 
 
-def make_absolute_url(file):
-    if http_regex.match(file.url):
-        return file.url
-    else:
-        return settings.BASE_URL + file.url
-
-
 class DynamicPageSerializer(serializers.ModelSerializer):
     identifier = serializers.SerializerMethodField()
     last_changed = serializers.SerializerMethodField()
