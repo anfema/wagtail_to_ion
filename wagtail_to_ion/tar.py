@@ -26,7 +26,7 @@ def calc_header_checksum(data):
     for i in range(0, 512):
         checksum += data[i]
     return checksum
-    
+
 
 def write_header(archive_filename: str, size: int, date: Optional[datetime]=None, item_type: bytes=b'0'):
     if not date:
@@ -145,13 +145,13 @@ class TarFile(TarData):
 
         self.header = write_header(archive_filename, self.filesize, date=date)
 
-    def data(self, block_size: int=512) -> Generator[bytes, None, None]:    
+    def data(self, block_size: int = 512) -> Generator[bytes, None, None]:
         yield bytes(self.header)
 
         if self.fp is not None:
             for i in range(ceil(self.filesize/block_size)):
                 yield self.fp.read(block_size)
-    
+
         if self.filesize % 512 != 0:
             yield b"\0" * (512 - (self.filesize % 512))
 
@@ -182,7 +182,7 @@ class TarStorageFile(TarData):
         self.file = file
         self.archive_filename = archive_filename
 
-    def data(self, block_size: int=512) -> Generator[bytes, None, None]:    
+    def data(self, block_size: int = 512) -> Generator[bytes, None, None]:
         if self.file is not None and self.fp is not None:
             yield bytes(write_header(self.archive_filename, self.file.size, date=self.file.last_modified))  # Try to use the already open connection to avoid head call
             for i in range(ceil(self.file.size/block_size)):
@@ -193,7 +193,7 @@ class TarStorageFile(TarData):
             # Fill with zeroes
             for i in range(ceil(self.file.size/block_size)):
                 yield b"\0" * 512
-    
+
     def prepare(self) -> None:
         try:
             self.fp = self.file.open('rb')
@@ -204,7 +204,8 @@ class TarStorageFile(TarData):
                 raise
 
     def cleanup(self) -> None:
-        self.fp.close()
+        if self.fp:
+            self.fp.close()
         self.fp = None
 
     @property
@@ -258,7 +259,7 @@ class TarWriter(StreamingHttpResponse):
     @property
     def streaming_content(self):
         return self.data()
-    
+
     @streaming_content.setter
     def streaming_content(self, value):
         pass
