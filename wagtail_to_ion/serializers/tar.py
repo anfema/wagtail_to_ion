@@ -166,7 +166,7 @@ def make_page_tar(page, locale, request, content_serializer=DynamicPageDetailSer
         f['tar_name'] = "pages/" + f["page"] + "/" + str(i[f["page"]])
         i[f["page"]] = i[f["page"]] + 1
         url = f["url"]
-        if "variation" in request.GET and url.startswith(settings.BASE_URL):
+        if "variation" in request.GET and url.startswith(request.build_absolute_uri('/')):
             url += "?variation=" + request.GET["variation"]
         index_file.append({
             "url": url,
