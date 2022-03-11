@@ -13,7 +13,7 @@ from django.conf import settings
 
 from wagtail_to_ion.fields.files import IonFieldFile
 
-PARALLEL_THREADS = 16
+PARALLEL_THREADS = 8
 
 
 def chunk(it: Iterable, size: int):
