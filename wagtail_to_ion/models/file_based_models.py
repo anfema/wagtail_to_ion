@@ -9,6 +9,7 @@ from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 
+from wagtail.core.models import Page
 from wagtail.documents.blocks import DocumentChooserBlock
 from wagtail.documents.models import AbstractDocument
 from wagtail.images.blocks import ImageChooserBlock
@@ -67,7 +68,8 @@ class AbstractIonDocument(IonFileContainerInterface, AbstractDocument):
 
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
-        return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
+        pages = super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
+        return Page.objects.filter(pk__in=pages.values('pk'))
 
 
 class AbstractIonImage(IonFileContainerInterface, AbstractImage):
@@ -102,7 +104,8 @@ class AbstractIonImage(IonFileContainerInterface, AbstractImage):
 
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
-        return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
+        pages = super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
+        return Page.objects.filter(pk__in=pages.values('pk'))
 
     @property
     def archive_rendition(self):
@@ -201,7 +204,8 @@ class AbstractIonMedia(IonFileContainerInterface, AbstractMedia):
 
     def get_usage(self):
         from wagtail_to_ion.utils import get_object_block_usage
-        return super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
+        pages = super().get_usage().union(get_object_block_usage(self, block_types=self.check_usage_block_types))
+        return Page.objects.filter(pk__in=pages.values('pk'))
 
     def set_audio_metadata(self):
         transaction.on_commit(lambda: get_audio_metadata.delay(self.pk))
