@@ -1,4 +1,5 @@
 import functools
+import warnings
 from typing import Any, Dict, Generator, List, NamedTuple, Tuple, Type, Union
 
 from django.db.models import Q, Model
@@ -11,6 +12,11 @@ from wagtail.documents import get_document_model
 
 from wagtail_to_ion.models import get_ion_collection_model
 from wagtail_to_ion.models.abstract import AbstractIonCollection
+
+try:
+    from wagtail.core.blocks.list_block import ListValue
+except ImportError:
+    ListValue = list  # the value of `ListBlock` was a simple `list` before wagtail 2.16
 
 
 def get_user_collections(user):
@@ -149,7 +155,7 @@ def get_object_block_usage(obj, block_types: Union[Type[Block], Tuple[Type[Block
 
         for page_with_obj_pk_in_blocks in page_model.objects.filter(stream_field_filter_q):
             for field_name in stream_fields:
-                for bound_block, _ in get_stream_value_blocks(getattr(page_with_obj_pk_in_blocks, field_name)):
+                for bound_block in get_stream_value_bound_blocks(getattr(page_with_obj_pk_in_blocks, field_name)):
                     if isinstance(bound_block.block, block_types) and bound_block.value == obj:
                         page_ptr_ids.add(page_with_obj_pk_in_blocks.page_ptr_id)
 
@@ -169,6 +175,11 @@ def get_stream_field_blocks(stream_field) -> Generator[StreamFieldBlockInfo, Non
             yield StreamFieldBlockInfo(block[0], block[1], in_struct)
             if hasattr(block[1], 'child_blocks'):
                 yield from unnest_blocks(block[1].child_blocks, in_struct=isinstance(block[1], StructBlock))
+            if hasattr(block[1], 'child_block') and hasattr(block[1].child_block, 'child_blocks'):
+                    yield from unnest_blocks(
+                        block[1].child_block.child_blocks,
+                        in_struct=isinstance(block[1].child_block, StructBlock),
+                    )
 
     return unnest_blocks(stream_field.stream_block.child_blocks)
 
@@ -180,6 +191,12 @@ class StreamValueBlockInfo(NamedTuple):
 
 def get_stream_value_blocks(stream_value: StreamValue) -> Generator[StreamValueBlockInfo, None, None]:
     """Generates an un-nested list of blocks of a `StreamValue`."""
+
+    warnings.warn(
+        'get_stream_value_blocks() is deprecated. Use get_stream_value_bound_blocks() instead.',
+        DeprecationWarning,
+    )
+
     def unnest_blocks(value: Union[StreamValue, StructValue]):
         if isinstance(value, StreamValue):
             for stream_block in value:
@@ -199,6 +216,23 @@ def get_stream_value_blocks(stream_value: StreamValue) -> Generator[StreamValueB
             raise RuntimeError(f'Unexpected type: {type(value)}')
 
     return unnest_blocks(stream_value)
+
+
+def get_stream_value_bound_blocks(stream_value: StreamValue) -> Generator[BoundBlock, None, None]:
+    """Generates an un-nested list of all bound blocks of a `StreamValue`."""
+    def unnest_blocks(value: Any):
+        if isinstance(value, BoundBlock):
+            yield value
+            value = value.value
+
+        if isinstance(value, (ListValue, StreamValue)):
+            for sub_value in value:
+                yield from unnest_blocks(sub_value)
+        elif isinstance(value, StructValue):
+            for sub_value in value.bound_blocks.values():
+                yield from unnest_blocks(sub_value)
+
+    yield from unnest_blocks(stream_value)
 
 
 class ModelStreamFieldBlockInfo(NamedTuple):
