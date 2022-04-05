@@ -169,6 +169,11 @@ def get_stream_field_blocks(stream_field) -> Generator[StreamFieldBlockInfo, Non
             yield StreamFieldBlockInfo(block[0], block[1], in_struct)
             if hasattr(block[1], 'child_blocks'):
                 yield from unnest_blocks(block[1].child_blocks, in_struct=isinstance(block[1], StructBlock))
+            if hasattr(block[1], 'child_block') and hasattr(block[1].child_block, 'child_blocks'):
+                    yield from unnest_blocks(
+                        block[1].child_block.child_blocks,
+                        in_struct=isinstance(block[1].child_block, StructBlock),
+                    )
 
     return unnest_blocks(stream_field.stream_block.child_blocks)
 
