@@ -4,7 +4,7 @@ from typing import Any, Dict, Generator, List, NamedTuple, Tuple, Type, Union
 
 from django.db.models import Q, Model
 
-from wagtail.core.blocks import Block, BoundBlock, StreamValue, StructBlock, StructValue
+from wagtail.core.blocks import Block, BoundBlock, ListBlock, StreamValue, StructBlock, StructValue
 from wagtail.core.fields import StreamField
 from wagtail.core.models import Collection, Page, PageViewRestriction, get_page_models
 from wagtail.images import get_image_model
@@ -150,7 +150,9 @@ def get_object_block_usage(obj, block_types: Union[Type[Block], Tuple[Type[Block
         # - `"<field_name>": <pk>` if block is in a StructValue
         for block in block_usage[page_model]:
             filter_att = block.block_name if block.in_struct else 'value'
-            stream_field_filter_q |= Q(**{f'{block.stream_field_name}__regex': rf'"{filter_att}":\s*{obj.pk}\M'})
+            stream_field_filter_q |= Q(
+                **{f'{block.stream_field_name}__regex': rf'"{filter_att}":\s*(?:[[\d ,]*?)??{obj.pk}\M'}
+            )
             stream_fields.add(block.stream_field_name)
 
         for page_with_obj_pk_in_blocks in page_model.objects.filter(stream_field_filter_q):
@@ -158,6 +160,9 @@ def get_object_block_usage(obj, block_types: Union[Type[Block], Tuple[Type[Block
                 for bound_block in get_stream_value_bound_blocks(getattr(page_with_obj_pk_in_blocks, field_name)):
                     if isinstance(bound_block.block, block_types) and bound_block.value == obj:
                         page_ptr_ids.add(page_with_obj_pk_in_blocks.page_ptr_id)
+                    elif isinstance(bound_block.block, ListBlock):
+                        if isinstance(bound_block.block.child_block, block_types) and obj in bound_block.value:
+                            page_ptr_ids.add(page_with_obj_pk_in_blocks.page_ptr_id)
 
     return Page.objects.filter(pk__in=page_ptr_ids)
 
@@ -175,7 +180,9 @@ def get_stream_field_blocks(stream_field) -> Generator[StreamFieldBlockInfo, Non
             yield StreamFieldBlockInfo(block[0], block[1], in_struct)
             if hasattr(block[1], 'child_blocks'):
                 yield from unnest_blocks(block[1].child_blocks, in_struct=isinstance(block[1], StructBlock))
-            if hasattr(block[1], 'child_block') and hasattr(block[1].child_block, 'child_blocks'):
+            if hasattr(block[1], 'child_block'):
+                yield StreamFieldBlockInfo(block[0], block[1].child_block, in_struct)
+                if hasattr(block[1].child_block, 'child_blocks'):
                     yield from unnest_blocks(
                         block[1].child_block.child_blocks,
                         in_struct=isinstance(block[1].child_block, StructBlock),
