@@ -1,24 +1,14 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
-from typing import Optional, Generator, List, Iterable
+from typing import Optional, Generator, List
 import os
 import calendar
-from itertools import islice
 from datetime import datetime
 from math import ceil
-
-from multiprocessing.pool import ThreadPool
 
 from django.http.response import StreamingHttpResponse
 from django.conf import settings
 
 from wagtail_to_ion.fields.files import IonFieldFile
-
-PARALLEL_THREADS = 8
-
-
-def chunk(it: Iterable, size: int):
-    it = iter(it)
-    return iter(lambda: tuple(islice(it, size)), ())
 
 
 def calc_header_checksum(data):
@@ -190,35 +180,24 @@ class TarFile(TarData):
 
 class TarStorageFile(TarData):
     def __init__(self, file: IonFieldFile, archive_filename: str) -> None:
-        self.fp = None
         self.file = file
         self.archive_filename = archive_filename
 
     def data(self, block_size: int = 512) -> Generator[bytes, None, None]:
-        if self.file is not None and self.fp is not None:
-            yield bytes(write_header(self.archive_filename, self.file.size, date=self.file.last_modified))  # Try to use the already open connection to avoid head call
-            for i in range(ceil(self.file.size/block_size)):
-                yield self.fp.read(block_size)
+        if self.file is not None:
+            yield bytes(
+                write_header(
+                    self.archive_filename, self.file.size, date=self.file.last_modified
+                )
+            )  # Try to use the already open connection to avoid head call
+            for i in range(ceil(self.file.size / block_size)):
+                yield self.file.read(block_size)
             if self.file.size % 512 != 0:
                 yield b"\0" * (512 - (self.file.size % 512))
         else:
             # Fill with zeroes
-            for i in range(ceil(self.file.size/block_size)):
+            for i in range(ceil(self.file.size / block_size)):
                 yield b"\0" * 512
-
-    def prepare(self) -> None:
-        try:
-            self.fp = self.file.open('rb')
-        except Exception:  # noqa (storage backends might raise an unknown exception)
-            if settings.ION_ALLOW_MISSING_FILES:
-                pass
-            else:
-                raise
-
-    def cleanup(self) -> None:
-        if self.fp:
-            self.fp.close()
-        self.fp = None
 
     @property
     def size(self) -> int:
@@ -242,24 +221,14 @@ class TarWriter(StreamingHttpResponse):
     def add_item(self, item: TarData):
         self._items.append(item)
 
-    def data(self, block_size: int=1024*16) -> Generator[bytes, None, None]:
-        with ThreadPool(processes=PARALLEL_THREADS) as pool:
-            for c in chunk(self._items, PARALLEL_THREADS):
-                pool.map(self.prepare, c)
-
-                for item in c:
-                    for data in item.data(block_size=block_size):
-                        yield data
-
-                pool.map(self.cleanup, c)
+    def data(self, block_size: int = 1024 * 16) -> Generator[bytes, None, None]:
+        for item in self._items:
+            item.prepare()
+            for data in item.data(block_size=block_size):
+                yield data
+            item.cleanup()
 
         yield b"\0" * 1024
-
-    def prepare(self, item: TarData, *args):
-        item.prepare()
-
-    def cleanup(self, item: TarData, *args):
-        item.cleanup()
 
     @property
     def size(self) -> int:
