@@ -1,24 +1,14 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
-from typing import Optional, Generator, List, Iterable
+from typing import Optional, Generator, List
 import os
 import calendar
-from itertools import islice
 from datetime import datetime
 from math import ceil
-
-from multiprocessing.pool import ThreadPool
 
 from django.http.response import StreamingHttpResponse
 from django.conf import settings
 
 from wagtail_to_ion.fields.files import IonFieldFile
-
-PARALLEL_THREADS = 8
-
-
-def chunk(it: Iterable, size: int):
-    it = iter(it)
-    return iter(lambda: tuple(islice(it, size)), ())
 
 
 def calc_header_checksum(data):
@@ -28,7 +18,12 @@ def calc_header_checksum(data):
     return checksum
 
 
-def write_header(archive_filename: str, size: int, date: Optional[datetime]=None, item_type: bytes=b'0'):
+def write_header(
+    archive_filename: str,
+    size: int,
+    date: Optional[datetime] = None,
+    item_type: bytes = b"0",
+):
     if not date:
         date = datetime.utcnow()
 
@@ -36,14 +31,14 @@ def write_header(archive_filename: str, size: int, date: Optional[datetime]=None
     header = bytearray()
 
     # name (100 bytes)
-    header += cutoff_filename.encode('utf-8')
+    header += cutoff_filename.encode("utf-8")
     for i in range(len(header), 100):
         header += b"\0"
 
     # mode (8 bytes)
-    if item_type == b'0':
+    if item_type == b"0":
         header += b"000644 \0"
-    elif item_type == b'5':
+    elif item_type == b"5":
         header += b"000755 \0"
     else:
         header += b"000644 \0"
@@ -99,7 +94,9 @@ def write_header(archive_filename: str, size: int, date: Optional[datetime]=None
 
 
 class TarData:
-    def __init__(self, archive_filename: str, content: bytearray, date: Optional[datetime]=None) -> None:
+    def __init__(
+        self, archive_filename: str, content: bytearray, date: Optional[datetime] = None
+    ) -> None:
         self.header = write_header(archive_filename, len(content), date=date)
         self.content = self._padded(content)
 
@@ -109,10 +106,10 @@ class TarData:
                 content += b"\0"
         return content
 
-    def data(self, block_size: int=512) -> Generator[bytes, None, None]:
+    def data(self, block_size: int = 512) -> Generator[bytes, None, None]:
         yield bytes(self.header)
-        for i in range(ceil(len(self.content)/block_size)):
-            yield bytes(self.content[i * block_size:(i + 1) * block_size])
+        for i in range(ceil(len(self.content) / block_size)):
+            yield bytes(self.content[i * block_size : (i + 1) * block_size])
 
     def prepare(self) -> None:
         pass
@@ -126,7 +123,12 @@ class TarData:
 
 
 class TarFile(TarData):
-    def __init__(self, filename: str, archive_filename: Optional[str]=None, date: Optional[datetime]=None) -> None:
+    def __init__(
+        self,
+        filename: str,
+        archive_filename: Optional[str] = None,
+        date: Optional[datetime] = None,
+    ) -> None:
         self.filename = filename.encode("utf-8")
         self.fp = None
 
@@ -149,7 +151,7 @@ class TarFile(TarData):
         yield bytes(self.header)
 
         if self.fp is not None:
-            for i in range(ceil(self.filesize/block_size)):
+            for i in range(ceil(self.filesize / block_size)):
                 yield self.fp.read(block_size)
 
         if self.filesize % 512 != 0:
@@ -157,7 +159,7 @@ class TarFile(TarData):
 
     def prepare(self) -> None:
         try:
-            self.fp = open(self.filename, 'rb')
+            self.fp = open(self.filename, "rb")
         except FileNotFoundError:
             if settings.ION_ALLOW_MISSING_FILES:
                 pass
@@ -178,35 +180,24 @@ class TarFile(TarData):
 
 class TarStorageFile(TarData):
     def __init__(self, file: IonFieldFile, archive_filename: str) -> None:
-        self.fp = None
         self.file = file
         self.archive_filename = archive_filename
 
     def data(self, block_size: int = 512) -> Generator[bytes, None, None]:
-        if self.file is not None and self.fp is not None:
-            yield bytes(write_header(self.archive_filename, self.file.size, date=self.file.last_modified))  # Try to use the already open connection to avoid head call
-            for i in range(ceil(self.file.size/block_size)):
-                yield self.fp.read(block_size)
+        if self.file is not None:
+            yield bytes(
+                write_header(
+                    self.archive_filename, self.file.size, date=self.file.last_modified
+                )
+            )  # Try to use the already open connection to avoid head call
+            for i in range(ceil(self.file.size / block_size)):
+                yield self.file.read(block_size)
             if self.file.size % 512 != 0:
                 yield b"\0" * (512 - (self.file.size % 512))
         else:
             # Fill with zeroes
-            for i in range(ceil(self.file.size/block_size)):
+            for i in range(ceil(self.file.size / block_size)):
                 yield b"\0" * 512
-
-    def prepare(self) -> None:
-        try:
-            self.fp = self.file.open('rb')
-        except Exception:  # noqa (storage backends might raise an unknown exception)
-            if settings.ION_ALLOW_MISSING_FILES:
-                pass
-            else:
-                raise
-
-    def cleanup(self) -> None:
-        if self.fp:
-            self.fp.close()
-        self.fp = None
 
     @property
     def size(self) -> int:
@@ -217,37 +208,27 @@ class TarStorageFile(TarData):
 
 
 class TarDir(TarData):
-    def __init__(self, archive_path: str, date: Optional[datetime]=None) -> None:
-        self.header = write_header(archive_path, 0, item_type=b'5', date=date)
+    def __init__(self, archive_path: str, date: Optional[datetime] = None) -> None:
+        self.header = write_header(archive_path, 0, item_type=b"5", date=date)
         self.content = bytearray()
 
 
 class TarWriter(StreamingHttpResponse):
     def __init__(self):
-        super().__init__(content_type='application/x-tar', status=200)
+        super().__init__(content_type="application/x-tar", status=200)
         self._items: List[TarData] = []
 
     def add_item(self, item: TarData):
         self._items.append(item)
 
-    def data(self, block_size: int=1024*16) -> Generator[bytes, None, None]:
-        with ThreadPool(processes=PARALLEL_THREADS) as pool:
-            for c in chunk(self._items, PARALLEL_THREADS):
-                pool.map(self.prepare, c)
-
-                for item in c:
-                    for data in item.data(block_size=block_size):
-                        yield data
-
-                pool.map(self.cleanup, c)
+    def data(self, block_size: int = 1024 * 16) -> Generator[bytes, None, None]:
+        for item in self._items:
+            item.prepare()
+            for data in item.data(block_size=block_size):
+                yield data
+            item.cleanup()
 
         yield b"\0" * 1024
-
-    def prepare(self, item: TarData, *args):
-        item.prepare()
-
-    def cleanup(self, item: TarData, *args):
-        item.cleanup()
 
     @property
     def size(self) -> int:
