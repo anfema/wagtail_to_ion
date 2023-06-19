@@ -1,5 +1,6 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
 from typing import Optional, Generator, List
+import logging
 import os
 import calendar
 from datetime import datetime
@@ -9,6 +10,10 @@ from django.http.response import StreamingHttpResponse
 from django.conf import settings
 
 from wagtail_to_ion.fields.files import IonFieldFile
+
+
+logger = logging.getLogger(__name__)
+
 
 
 def calc_header_checksum(data):
