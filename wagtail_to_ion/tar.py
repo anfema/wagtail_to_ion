@@ -191,7 +191,13 @@ class TarStorageFile(TarData):
                 )
             )  # Try to use the already open connection to avoid head call
             for i in range(ceil(self.file.size / block_size)):
-                yield self.file.read(block_size)
+                try:
+                    yield self.file.read(block_size)
+                except Exception as e:
+                    logger.exception(
+                        f'Error reading file {self.archive_filename} / {self.file.name}. Original exception: {e}',
+                        extra={'archive_filename': self.archive_filename, 'name': self.file.name}
+                    )
             if self.file.size % 512 != 0:
                 yield b"\0" * (512 - (self.file.size % 512))
         else:
