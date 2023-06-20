@@ -4,7 +4,7 @@ import logging
 import os
 import calendar
 from datetime import datetime
-from math import ceil
+from math import ceil, floor
 
 from django.http.response import StreamingHttpResponse
 from django.conf import settings
@@ -111,7 +111,7 @@ class TarData:
     def data(self, block_size: int = 512) -> Generator[bytes, None, None]:
         yield bytes(self.header)
         for i in range(ceil(len(self.content) / block_size)):
-            yield bytes(self.content[i * block_size : (i + 1) * block_size])
+            yield bytes(self.content[i * block_size: (i + 1) * block_size])
 
     def prepare(self) -> None:
         pass
@@ -190,14 +190,27 @@ class TarStorageFile(TarData):
             yield bytes(
                 write_header(self.archive_filename, self.file.size, date=self.file.last_modified)
             )  # Try to use the already open connection to avoid head call
+            sz = 0
+
+            # chunk up the file, we use ceil here, so the last chunk is probably not full
             for i in range(ceil(self.file.size / block_size)):
                 try:
                     yield self.file.read(block_size)
+                    sz += block_size
                 except Exception as e:
                     logger.exception(
-                        f"Error reading file {self.archive_filename} / {self.file.name}. Original exception: {e}",
+                        f"Error reading file {self.archive_filename} / {self.file.name} at {sz} bytes."
+                        f" Original exception: {e}",
                         extra={"archive_filename": self.archive_filename, "self_name": self.file.name},
                     )
+                    # if we were canceled by a thrown exception above, fill up the file slot with zeroes
+                    # as we already wrote the file header and have to pull through now.
+                    if self.file.size > sz:
+                        for i in range(floor((self.file.size - sz) / block_size)):
+                            yield b"\0" * block_size
+                        yield b"\0" * ((self.file.size - sz) % block_size)
+
+            # as the last chunk was probably only partly filled, add padding to next 512 bytes
             if self.file.size % 512 != 0:
                 yield b"\0" * (512 - (self.file.size % 512))
         else:
