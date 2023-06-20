@@ -15,7 +15,6 @@ from wagtail_to_ion.fields.files import IonFieldFile
 logger = logging.getLogger(__name__)
 
 
-
 def calc_header_checksum(data):
     checksum = 0
     for i in range(0, 512):
@@ -99,9 +98,7 @@ def write_header(
 
 
 class TarData:
-    def __init__(
-        self, archive_filename: str, content: bytearray, date: Optional[datetime] = None
-    ) -> None:
+    def __init__(self, archive_filename: str, content: bytearray, date: Optional[datetime] = None) -> None:
         self.header = write_header(archive_filename, len(content), date=date)
         self.content = self._padded(content)
 
@@ -191,17 +188,15 @@ class TarStorageFile(TarData):
     def data(self, block_size: int = 512) -> Generator[bytes, None, None]:
         if self.file is not None:
             yield bytes(
-                write_header(
-                    self.archive_filename, self.file.size, date=self.file.last_modified
-                )
+                write_header(self.archive_filename, self.file.size, date=self.file.last_modified)
             )  # Try to use the already open connection to avoid head call
             for i in range(ceil(self.file.size / block_size)):
                 try:
                     yield self.file.read(block_size)
                 except Exception as e:
                     logger.exception(
-                        f'Error reading file {self.archive_filename} / {self.file.name}. Original exception: {e}',
-                        extra={'archive_filename': self.archive_filename, 'name': self.file.name}
+                        f"Error reading file {self.archive_filename} / {self.file.name}. Original exception: {e}",
+                        extra={"archive_filename": self.archive_filename, "self_name": self.file.name},
                     )
             if self.file.size % 512 != 0:
                 yield b"\0" * (512 - (self.file.size % 512))
