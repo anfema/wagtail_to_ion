@@ -71,8 +71,10 @@ class DynamicPageSerializer(serializers.ModelSerializer):
     meta = serializers.SerializerMethodField()
 
     def __init__(self, instance=None, data=empty, **kwargs):
-        self.user = kwargs.pop('user', None)
+        self.user = kwargs.pop("user", None)
         super().__init__(instance, data, **kwargs)
+        if self.user is None and "request" in self.context:
+            self.user = self.context["request"].user
 
     def get_identifier(self, obj):
         return obj.slug
