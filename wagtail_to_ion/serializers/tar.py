@@ -267,7 +267,7 @@ def make_pagemeta(page, locale_code, request):
 
 def make_pagecontent(page, request, content_serializer=DynamicPageDetailSerializer):
     # build content json
-    content = content_serializer(instance=page, context={"request": request})  # FIXME: may be overridden
+    content = content_serializer(instance=page, context={"request": request}, user=request.user)  # FIXME: may be overridden
 
     content_dict = [
         {
