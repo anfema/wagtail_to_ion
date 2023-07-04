@@ -273,7 +273,7 @@ def make_pagecontent(page, request, content_serializer=DynamicPageDetailSerializ
         {
             "json": (JSONRenderer().render(content.data).decode("utf-8")).encode("utf-8"),
             "name": page.slug,
-            "last_published": page.last_published_at,
+            "last_published": content.get_last_changed(page),
         }
     ]
 
