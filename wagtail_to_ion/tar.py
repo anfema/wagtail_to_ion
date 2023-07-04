@@ -1,5 +1,5 @@
 # Copyright © 2017 anfema GmbH. All rights reserved.
-from typing import Optional, Generator, List
+from typing import Optional, Generator, List, Union
 import logging
 import os
 import calendar
@@ -25,11 +25,13 @@ def calc_header_checksum(data):
 def write_header(
     archive_filename: str,
     size: int,
-    date: Optional[datetime] = None,
+    date: Optional[Union[datetime, str]] = None,
     item_type: bytes = b"0",
 ):
     if not date:
         date = datetime.utcnow()
+    if isinstance(date, str):
+        date = datetime.fromisoformat(date.replace('Z', '+00:00'))
 
     cutoff_filename = archive_filename[-100:]
     header = bytearray()

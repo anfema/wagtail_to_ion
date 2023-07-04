@@ -26,11 +26,11 @@ logger = logging.getLogger(__name__)
 
 
 replacements = [
-    (re.compile(r'<p>\s*(<br/?>)*</p>'), ''),  # All empty paragraphs filled only with whitespace or <br> tags
-    (re.compile(r'<br/?>\s*</li>'), '</li>')   # All lists that end with a <br> tag before the closing </li>
+    (re.compile(r"<p>\s*(<br/?>)*</p>"), ""),  # All empty paragraphs filled only with whitespace or <br> tags
+    (re.compile(r"<br/?>\s*</li>"), "</li>"),  # All lists that end with a <br> tag before the closing </li>
 ]
 
-http_regex = re.compile(r'https?://.*')
+http_regex = re.compile(r"https?://.*")
 
 
 def get_wagtail_panels_and_extra_fields(obj) -> Iterable[Tuple[str, str, models.Model]]:
@@ -39,7 +39,7 @@ def get_wagtail_panels_and_extra_fields(obj) -> Iterable[Tuple[str, str, models.
 
     :returns: tuple of ``outlet_name``, ``attribute_name``, ``object``
     """
-    if hasattr(obj.specific_class, 'ion_extra_fields'):
+    if hasattr(obj.specific_class, "ion_extra_fields"):
         for item in obj.specific_class.ion_extra_fields():
             if isinstance(item, str):
                 field_path = item
@@ -49,17 +49,17 @@ def get_wagtail_panels_and_extra_fields(obj) -> Iterable[Tuple[str, str, models.
             else:
                 raise NotImplementedError()
 
-            if '.' not in field_path:
+            if "." not in field_path:
                 yield outlet_name, field_path, obj.specific
             else:
-                if len(field_path.split('.')) > 2:
+                if len(field_path.split(".")) > 2:
                     raise NotImplementedError()
-                relation, field_name = field_path.split('.')
+                relation, field_name = field_path.split(".")
                 related_obj = getattr(obj.specific, relation)
                 yield outlet_name, field_name, related_obj
 
     for field in obj.specific.content_panels:
-        if hasattr(field, 'field_name'):
+        if hasattr(field, "field_name"):
             yield field.field_name, field.field_name, obj.specific
 
 
@@ -71,8 +71,10 @@ class DynamicPageSerializer(serializers.ModelSerializer):
     meta = serializers.SerializerMethodField()
 
     def __init__(self, instance=None, data=empty, **kwargs):
-        self.user = kwargs.pop('user', None)
+        self.user = kwargs.pop("user", None)
         super().__init__(instance, data, **kwargs)
+        if self.user is None and "request" in self.context:
+            self.user = self.context["request"].user
 
     def get_identifier(self, obj):
         return obj.slug
@@ -84,7 +86,7 @@ class DynamicPageSerializer(serializers.ModelSerializer):
 
     def get_layout(self, obj):
         try:
-            api_version = int(self.context['request'].META['HTTP_API_VERSION']) or None
+            api_version = int(self.context["request"].META["HTTP_API_VERSION"]) or None
         except (KeyError, ValueError):
             api_version = None
 
@@ -108,7 +110,7 @@ class DynamicPageSerializer(serializers.ModelSerializer):
           specific object to generate the value for the meta struct
         """
         result = {}
-        if hasattr(obj.specific_class, 'ion_metadata'):
+        if hasattr(obj.specific_class, "ion_metadata"):
             for item in obj.specific_class.ion_metadata():
                 if isinstance(item, tuple) or isinstance(item, list):
                     field_name = item[0]
@@ -130,7 +132,7 @@ class DynamicPageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Page
-        fields = ('identifier', 'parent', 'last_changed', 'layout', 'meta')
+        fields = ("identifier", "parent", "last_changed", "layout", "meta")
 
 
 class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
@@ -142,29 +144,30 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
 
     @cached_property
     def ion_serializer_tree(self):
-        return self.build_tree(self.instance, self.context['request'])
+        return self.build_tree(self.instance, self.context["request"])
 
     def get_collection(self, obj):
         return get_collection_for_page(obj)
 
     def get_archive(self, obj):
-        locale = self.context['request'].resolver_match.kwargs['locale']
-        url = reverse('v1:archive-page', kwargs={
-            'locale': locale,
-            'collection': self.get_collection(obj),
-            'slug': obj.slug,
-        })
+        locale = self.context["request"].resolver_match.kwargs["locale"]
+        url = reverse(
+            "v1:archive-page",
+            kwargs={
+                "locale": locale,
+                "collection": self.get_collection(obj),
+                "slug": obj.slug,
+            },
+        )
 
-        url = self.context['request'].build_absolute_uri(url) + '?variation={}'.format(
-            self.context['request'].GET.get(
-                'variation', 'default'
-            )
+        url = self.context["request"].build_absolute_uri(url) + "?variation={}".format(
+            self.context["request"].GET.get("variation", "default")
         )
 
         return url
 
     def get_locale(self, obj):
-        return getattr(obj, 'locale_code', getattr(obj.specific, 'locale_code', None))
+        return getattr(obj, "locale_code", getattr(obj.specific, "locale_code", None))
 
     def remap_outlet_name(self, outlet_path):
         # just returns the outlet name unaltered as remapping
@@ -172,29 +175,31 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
         return outlet_path[-1]
 
     def remap_outlet_names_recursive(self, struct, path):
-        if 'outlet' not in struct:
+        if "outlet" not in struct:
             return
-        struct['outlet'] = self.remap_outlet_name(path + [struct['outlet']])
+        struct["outlet"] = self.remap_outlet_name(path + [struct["outlet"]])
 
-        if 'children' not in struct:
+        if "children" not in struct:
             return
-        for item in struct['children']:
-            self.remap_outlet_names_recursive(item, path + [struct['outlet']])
+        for item in struct["children"]:
+            self.remap_outlet_names_recursive(item, path + [struct["outlet"]])
 
     def build_tree(self, obj, request):
         # Create a top-level container
         context = {
-            'request': request,
-            'page': obj,
+            "request": request,
+            "page": obj,
         }
-        container = IonContainerSerializer('container_0', context=context)
+        container = IonContainerSerializer("container_0", context=context)
 
         if obj is None:
             return container
 
         # add all outlets to the container
         for outlet_name, field_name, instance in get_wagtail_panels_and_extra_fields(obj):
-            container.add_child(outlet_name, getattr(instance, field_name)) # This will auto-detect the serializers to use
+            container.add_child(
+                outlet_name, getattr(instance, field_name)
+            )  # This will auto-detect the serializers to use
 
         return container
 
@@ -211,16 +216,28 @@ class DynamicPageDetailSerializer(DynamicPageSerializer, DataObject):
 
     def get_children(self, obj):
         if settings.GET_PAGES_BY_USER:
-            user = self.context['request'].user
+            user = self.context["request"].user
             tree = obj.get_children().filter(live=True)
             public_tree = tree.public()
             non_public_tree = tree.not_public().filter(
                 view_restrictions__restriction_type=PageViewRestriction.GROUPS,
-                view_restrictions__groups__in=user.groups.all()
+                view_restrictions__groups__in=user.groups.all(),
             )
-            return list(public_tree.values_list('slug', flat=True)) + list(non_public_tree.values_list('slug', flat=True))
+            return list(public_tree.values_list("slug", flat=True)) + list(
+                non_public_tree.values_list("slug", flat=True)
+            )
         else:
-            return list(obj.get_children().filter(live=True).values_list('slug', flat=True))
+            return list(obj.get_children().filter(live=True).values_list("slug", flat=True))
 
     class Meta(DynamicPageSerializer.Meta):
-        fields = ('parent', 'identifier', 'collection', 'last_changed', 'archive', 'locale', 'layout', 'contents', 'children')
+        fields = (
+            "parent",
+            "identifier",
+            "collection",
+            "last_changed",
+            "archive",
+            "locale",
+            "layout",
+            "contents",
+            "children",
+        )
